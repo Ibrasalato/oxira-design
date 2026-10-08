@@ -1,0 +1,57 @@
+---
+import { t, CONTACT, type Lang } from '../i18n/content';
+import { link } from '../lib/routes';
+import Logo from './Logo.astro';
+import LangPicker from './LangPicker.astro';
+
+interface Props { lang: Lang; path: string }
+const { lang, path } = Astro.props;
+const c = t[lang];
+const home = link(lang, '/');
+const year = new Date().getFullYear();
+const mainUrl = CONTACT.main + (lang === 'ar' ? '/' : `/${lang}/`);
+const eventsUrl = 'https://events.oxira.sa' + (lang === 'ar' ? '/' : `/${lang}/`);
+---
+<footer class="ft bg-navy">
+  <div class="wrap ft-grid">
+    <div class="ft-brand">
+      <a href={home} class="ft-logo" aria-label="Oxira Design"><Logo variant="dark" /><span>{c.brandSub}</span></a>
+      <p>{c.footer.tagline}</p>
+      <LangPicker lang={lang} path={path} tone="dark" up />
+    </div>
+    <div>
+      <h2>{c.footer.product}</h2>
+      <ul>
+        <li><a href={link(lang, '/studio/')}>{c.nav.studio}</a></li>
+        <li><a href={`${home}#packages`}>{c.nav.packages}</a></li>
+        <li><a href={`${home}#developers`}>{c.nav.developers}</a></li>
+        <li><a href={`${home}#faq`}>{c.nav.faq}</a></li>
+        <li><a href={link(lang, '/privacy/')}>{c.footer.links.privacy}</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2>{c.footer.company}</h2>
+      <ul>
+        <li><a href={mainUrl}>{c.footer.links.main}</a></li>
+        <li><a href={eventsUrl}>{c.footer.links.events}</a></li>
+        <li><a href={`mailto:${CONTACT.email}`} dir="ltr">{CONTACT.email}</a></li>
+        <li><a href={CONTACT.whatsapp} dir="ltr">{CONTACT.phone}</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap ft-bottom">© {year} Oxira. {c.footer.rights}</div>
+</footer>
+
+<style>
+  .ft { padding-block: 4rem 2rem; }
+  .ft-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2.5rem; }
+  .ft-logo { display: inline-flex; align-items: center; gap: .7rem; font-size: 2rem; color: #fff; text-decoration: none; direction: ltr; }
+  .ft-logo span { font-size: 1rem; font-weight: 700; color: var(--amber); border-inline-start: 2px solid rgba(255,255,255,.2); padding-inline-start: .7rem; }
+  .ft-brand p { color: var(--muted-on-navy); margin: 1rem 0 1.25rem; max-width: 26rem; }
+  .ft h2 { font-size: 1rem; color: #fff; margin-bottom: .8rem; }
+  .ft ul { list-style: none; display: grid; gap: .45rem; }
+  .ft ul a { color: var(--muted-on-navy); text-decoration: none; }
+  .ft ul a:hover { color: #fff; }
+  .ft-bottom { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.1); color: var(--muted-on-navy); font-size: .9rem; }
+  @media (max-width: 760px) { .ft-grid { grid-template-columns: 1fr 1fr; } .ft-brand { grid-column: 1 / -1; } }
+</style>

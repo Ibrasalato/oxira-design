@@ -1,0 +1,92 @@
+---
+import { t, type Lang } from '../i18n/content';
+import { link } from '../lib/routes';
+import Logo from './Logo.astro';
+import LangPicker from './LangPicker.astro';
+
+interface Props { lang: Lang; path: string; app?: boolean }
+const { lang, path, app = false } = Astro.props;
+const c = t[lang];
+const home = link(lang, '/');
+const onHome = path === '/';
+const anchor = (id: string) => (onHome ? `#${id}` : `${home}#${id}`);
+const items = [
+  { href: anchor('how'), label: c.nav.how },
+  { href: link(lang, '/studio/'), label: c.nav.studio, current: path === '/studio/' },
+  { href: anchor('packages'), label: c.nav.packages },
+  { href: anchor('developers'), label: c.nav.developers },
+  { href: anchor('faq'), label: c.nav.faq },
+];
+---
+<header class={`hd${app ? ' hd-app' : ''}`}>
+  <div class="hd-row">
+    <a class="hd-brand" href={home} aria-label="Oxira Design">
+      <Logo variant="light" />
+      <span class="hd-sub">{c.brandSub}</span>
+    </a>
+    <nav class="hd-nav" id="hd-nav" aria-label="Main">
+      <ul>
+        {items.map((n) => <li><a href={n.href} aria-current={n.current ? 'page' : undefined}>{n.label}</a></li>)}
+      </ul>
+      <a class="btn btn-amber hd-cta-m" href={anchor('order')}>{c.nav.contact}</a>
+    </nav>
+    <div class="hd-end">
+      <LangPicker lang={lang} path={path} />
+      {app
+        ? <a class="btn btn-navy hd-cta" id="hd-order" href={anchor("order")}>{c.nav.contact}</a>
+        : <a class="btn btn-navy hd-cta" href={link(lang, '/studio/')}>{c.cta.studio}</a>}
+      <button type="button" class="hd-menu" id="hd-menu" aria-controls="hd-nav" aria-expanded="false">
+        <span class="sr-only">Menu</span><i></i><i></i>
+      </button>
+    </div>
+  </div>
+</header>
+
+<script>
+  const btn = document.getElementById('hd-menu');
+  const nav = document.getElementById('hd-nav');
+  btn?.addEventListener('click', () => {
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+    nav?.classList.toggle('is-open', open);
+  });
+  nav?.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('a')) { nav.classList.remove('is-open'); btn?.setAttribute('aria-expanded', 'false'); }
+  });
+</script>
+
+<style>
+  .hd { position: sticky; top: 0; z-index: 40; background: rgba(255,255,255,.92); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
+  .hd-row { display: flex; align-items: center; gap: 1.5rem; height: 72px; max-width: var(--page); margin-inline: auto; padding-inline: var(--gutter); }
+  .hd-app .hd-row { max-width: none; height: 60px; padding-inline: 1rem; }
+  .hd-brand { display: inline-flex; align-items: center; gap: .7rem; text-decoration: none; color: var(--navy); font-size: 1.9rem; direction: ltr; flex: none; }
+  .hd-app .hd-brand { font-size: 1.6rem; }
+  .hd-sub { font-size: .95rem; font-weight: 700; color: var(--blue); padding-inline-start: .7rem; border-inline-start: 2px solid var(--line); line-height: 1.2; letter-spacing: .01em; }
+  html[dir='rtl'] .hd-sub { direction: rtl; }
+  .hd-nav { flex: 1; }
+  .hd-nav ul { list-style: none; display: flex; gap: .25rem; justify-content: center; }
+  .hd-nav a { display: block; padding: .5rem .8rem; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: .98rem; white-space: nowrap; }
+  .hd-nav a:hover, .hd-nav a[aria-current] { color: var(--ink); background: var(--paper); }
+  .hd .hd-cta-m { display: none; }
+  .hd-end { display: flex; align-items: center; gap: .5rem; margin-inline-start: auto; }
+  .hd-cta { padding: .8rem 1.15rem; font-size: .95rem; white-space: nowrap; }
+  .hd-menu { display: none; width: 44px; height: 44px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+  .hd-menu i { width: 18px; height: 2px; background: var(--ink); border-radius: 2px; transition: transform .2s; }
+  .hd-menu[aria-expanded='true'] i:first-of-type { transform: translateY(4px) rotate(45deg); }
+  .hd-menu[aria-expanded='true'] i:last-of-type { transform: translateY(-4px) rotate(-45deg); }
+
+  @media (max-width: 1080px) {
+    .hd-menu { display: inline-flex; }
+    .hd .hd-cta { display: none; }
+    .hd-nav { position: fixed; inset: 72px 0 auto 0; background: #fff; border-bottom: 1px solid var(--line); padding: 1rem var(--gutter) 1.5rem; display: none; box-shadow: 0 20px 40px -20px rgba(6,26,45,.25); }
+    .hd-app .hd-nav { top: 60px; }
+    .hd-nav.is-open { display: block; }
+    .hd-nav ul { flex-direction: column; }
+    .hd-nav a { font-size: 1.1rem; padding: .8rem .6rem; }
+    .hd .hd-cta-m { display: flex; margin-top: 1rem; }
+  }
+  @media (max-width: 520px) {
+    .hd-brand { font-size: 1.5rem; }
+    .hd-sub { font-size: .82rem; padding-inline-start: .5rem; }
+  }
+</style>

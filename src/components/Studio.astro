@@ -1,0 +1,280 @@
+---
+// The DXF → 3D studio app. Logic in src/scripts/studio/app.ts.
+import { t, N8N, CONTACT, type Lang } from '../i18n/content';
+import { st } from '../i18n/studio';
+import { asset } from '../lib/routes';
+import Icon from './Icon.astro';
+import OrderForm from './OrderForm.astro';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const s = st[lang];
+const c = t[lang];
+const cfg = {
+  lang,
+  render: import.meta.env.PUBLIC_RENDER_ENDPOINT || N8N.render,
+  samples: { apartment: asset('samples/apartment-3br.dxf'), studio: asset('samples/studio-ar.dxf') },
+  whatsapp: CONTACT.whatsapp,
+};
+---
+<div class="sd" id="sd" data-cfg={JSON.stringify(cfg)}>
+  <aside class="sd-panel" id="sd-panel">
+    <section class="sd-sec sd-upload">
+      <h2>{s.upload.title}</h2>
+      <label class="sd-drop" id="sd-drop">
+        <input type="file" id="sd-file" accept=".dxf,.dwg" />
+        <Icon name="upload" />
+        <b>{s.upload.drop}</b>
+        <span class="btn btn-navy sd-choose">{s.upload.choose}</span>
+      </label>
+      <div class="sd-file-row" id="sd-file-row" hidden>
+        <Icon name="file" /><span id="sd-file-name"></span>
+        <button type="button" class="sd-link" id="sd-replace">{s.upload.replace}</button>
+      </div>
+      <p class="sd-small">{s.upload.samples}</p>
+      <div class="sd-samples">
+        <button type="button" data-sample="apartment">{s.upload.sample1}</button>
+        <button type="button" data-sample="studio">{s.upload.sample2}</button>
+      </div>
+      <p class="sd-small sd-priv"><Icon name="check" />{s.upload.privacy}</p>
+      <div class="sd-alert" id="sd-alert" hidden></div>
+    </section>
+
+    <div class="sd-after" id="sd-after" hidden>
+      <section class="sd-sec">
+        <div class="sd-total">
+          <div><span>{s.rooms.total}</span><b id="sd-total">0</b></div>
+          <p id="sd-stats"></p>
+        </div>
+        <button type="button" class="btn btn-amber sd-order-btn" data-sd-order><Icon name="people" />{s.order.cta}</button>
+        <p class="sd-small sd-center">{s.order.sub}</p>
+      </section>
+
+      <details class="sd-sec" open>
+        <summary>{s.style.title}</summary>
+        <div class="sd-styles" id="sd-styles">
+          {Object.entries(s.style.names).map(([k, v], i) => <button type="button" data-style={k} aria-pressed={i === 0 ? 'true' : 'false'}><i class={`sw sw-${k}`}></i>{v}</button>)}
+        </div>
+        <label class="sd-switch"><input type="checkbox" id="sd-furnish" checked /><span>{s.style.furnish}</span></label>
+        <label class="sd-switch"><input type="checkbox" id="sd-labels" checked /><span>{s.style.labels}</span></label>
+      </details>
+
+      <details class="sd-sec" open>
+        <summary>{s.rooms.title}</summary>
+        <ul class="sd-rooms" id="sd-rooms"></ul>
+      </details>
+
+      <details class="sd-sec">
+        <summary>{s.boq.title}</summary>
+        <table class="sd-boq" id="sd-boq"></table>
+        <p class="sd-small">{s.boq.note}</p>
+        <button type="button" class="sd-link" id="sd-csv">{s.boq.csv}</button>
+      </details>
+
+      <details class="sd-sec">
+        <summary>{s.render.title}</summary>
+        <p class="sd-small">{s.render.note}</p>
+        <button type="button" class="btn btn-navy sd-wide" id="sd-render"><Icon name="spark" />{s.render.btn}</button>
+        <p class="sd-small" id="sd-render-left"></p>
+      </details>
+
+      <details class="sd-sec">
+        <summary>{s.export.title}</summary>
+        <div class="sd-exports">
+          <button type="button" class="btn btn-ghost" data-export="png">{s.export.png}</button>
+          <button type="button" class="btn btn-ghost" data-export="glb">{s.export.glb}</button>
+          <button type="button" class="btn btn-ghost" data-export="obj">{s.export.obj}</button>
+        </div>
+        <p class="sd-small">{s.export.note}</p>
+      </details>
+
+      <details class="sd-sec">
+        <summary>{s.layers.title}</summary>
+        <p class="sd-small">{s.layers.hint}</p>
+        <ul class="sd-layers" id="sd-layers"></ul>
+        <div class="sd-row2">
+          <label class="sd-field"><span>{s.layers.units}</span>
+            <select id="sd-units">
+              <option value="auto">{s.layers.auto}</option>
+              <option value="0.001">{s.layers.unitNames.mm}</option>
+              <option value="0.01">{s.layers.unitNames.cm}</option>
+              <option value="1">{s.layers.unitNames.m}</option>
+              <option value="0.0254">{s.layers.unitNames.in}</option>
+            </select>
+          </label>
+          <label class="sd-field"><span>{s.layers.height}</span><input id="sd-height" type="number" min="2.2" max="8" step="0.1" value="3" /></label>
+        </div>
+        <p class="sd-small" id="sd-guessed" hidden>{s.layers.guessed}</p>
+        <button type="button" class="btn btn-navy sd-wide" id="sd-rebuild">{s.layers.rebuild}</button>
+      </details>
+    </div>
+  </aside>
+
+  <div class="sd-stage" id="sd-stage">
+    <div class="sd-view" id="sd-view"></div>
+    <div class="sd-empty" id="sd-empty">
+      <Icon name="cube" />
+      <h1>{s.empty.title}</h1>
+      <p>{s.empty.body}</p>
+      <button type="button" class="btn btn-amber" data-sample="apartment">{s.upload.sample1}</button>
+    </div>
+    <div class="sd-busy" id="sd-busy" hidden><i></i><span id="sd-busy-t"></span></div>
+    <div class="sd-tools" id="sd-tools" hidden>
+      <div class="sd-seg" role="group">
+        <button type="button" data-view="orbit" aria-pressed="true">{s.view.orbit}</button>
+        <button type="button" data-view="top" aria-pressed="false">{s.view.top}</button>
+        <button type="button" data-view="walk" aria-pressed="false">{s.view.walk}</button>
+      </div>
+      <button type="button" class="sd-tool" id="sd-cut" aria-pressed="false">{s.view.cut}</button>
+      <button type="button" class="sd-tool sd-ico" id="sd-reset" title={s.view.reset} aria-label={s.view.reset}><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" /></svg></button>
+      <button type="button" class="sd-tool sd-ico" id="sd-full" title={s.view.fullscreen} aria-label={s.view.fullscreen}><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg></button>
+    </div>
+    <div class="sd-walk" id="sd-walk" hidden>
+      <p>{s.view.walkHint}</p>
+      <div class="sd-pad" dir="ltr">
+        <button type="button" data-move="tl" aria-label={s.view.left}>⟲</button>
+        <button type="button" data-move="f" aria-label={s.view.fwd}>▲</button>
+        <button type="button" data-move="tr" aria-label={s.view.right}>⟳</button>
+        <button type="button" data-move="l" aria-label={s.view.left}>◀</button>
+        <button type="button" data-move="b" aria-label={s.view.backward}>▼</button>
+        <button type="button" data-move="r" aria-label={s.view.right}>▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog class="sd-dlg" id="sd-order-dlg">
+  <div class="sd-dlg-head"><h2>{c.order.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
+  <OrderForm lang={lang} id="studio-order" compact />
+</dialog>
+
+<dialog class="sd-dlg sd-dlg-img" id="sd-render-dlg">
+  <div class="sd-dlg-head"><h2>{s.render.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
+  <div class="sd-render-out" id="sd-render-out"></div>
+  <div class="sd-dlg-foot">
+    <a class="btn btn-navy" id="sd-render-dl" download="oxira-design-render.jpg" hidden>{s.render.download}</a>
+    <button type="button" class="btn btn-amber" data-sd-order>{s.order.cta}</button>
+  </div>
+</dialog>
+
+<script>
+  import { startStudio } from '../scripts/studio/app.ts';
+  startStudio(document.getElementById('sd')!);
+</script>
+
+<style is:global>
+  body.is-app { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+  body.is-app main { flex: 1; min-height: 0; }
+  body.is-app .oxchat { bottom: 14px; }
+  body.is-app .ox-fab-label { display: none; }
+  body.is-app .ox-fab, html[dir='rtl'] body.is-app .ox-fab { padding: .45rem; }
+</style>
+
+<style is:global>
+  .sd { display: grid; grid-template-columns: 380px 1fr; height: 100%; min-height: 0; }
+  .sd-panel { overflow-y: auto; background: #fff; border-inline-end: 1px solid var(--line); padding: 1rem 1rem 6rem; }
+  .sd-sec { border-bottom: 1px solid var(--line); padding: 1rem .25rem; }
+  .sd-sec h2, .sd-sec summary { font-size: 1.02rem; font-weight: 700; }
+  .sd-sec summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  .sd-sec summary::-webkit-details-marker { display: none; }
+  .sd-sec summary::after { content: ''; width: .45em; height: .45em; border-bottom: 2px solid currentColor; border-inline-end: 2px solid currentColor; transform: rotate(45deg); opacity: .6; }
+  .sd-sec[open] summary::after { transform: rotate(-135deg); }
+  .sd-sec[open] summary { margin-bottom: .8rem; }
+  .sd-drop { position: relative; display: grid; justify-items: center; gap: .5rem; margin-top: .8rem; padding: 1.3rem 1rem; border: 2px dashed #B9C6D2; border-radius: 16px; background: var(--paper); text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  .sd-drop.is-over, .sd-drop:hover { border-color: var(--blue); background: var(--blue-soft); }
+  .sd-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .sd-drop .ic { width: 34px; height: 34px; color: var(--blue); }
+  .sd-choose { padding: .6rem 1rem; font-size: .9rem; pointer-events: none; }
+  .sd-file-row { display: flex; align-items: center; gap: .5rem; margin-top: .8rem; font-weight: 600; font-size: .92rem; }
+  .sd-file-row .ic { width: 20px; height: 20px; color: var(--blue); flex: none; }
+  .sd-file-row span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: start; }
+  .sd-small { font-size: .84rem; color: var(--muted); margin-top: .6rem; line-height: 1.6; }
+  .sd-center { text-align: center; }
+  .sd-priv { display: flex; gap: .4rem; align-items: flex-start; }
+  .sd-priv .ic { width: 16px; height: 16px; color: #0B8A6E; flex: none; margin-top: .2rem; }
+  .sd-samples { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
+  .sd-samples button, .sd-styles button { font: 600 .85rem/1.2 var(--font); padding: .5rem .75rem; border-radius: 10px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  .sd-samples button:hover, .sd-styles button:hover { border-color: var(--blue); }
+  .sd-alert { margin-top: .8rem; padding: .75rem .85rem; border-radius: 12px; background: #FFF6E0; color: #6B4A00; font-size: .88rem; }
+  .sd-alert .btn { margin-top: .6rem; padding: .55rem .9rem; font-size: .88rem; }
+  .sd-link { background: none; border: 0; padding: 0; font: 700 .9rem var(--font); color: #00699A; cursor: pointer; text-decoration: underline; text-underline-offset: .2em; }
+  .sd-total { display: flex; justify-content: space-between; align-items: end; gap: 1rem; }
+  .sd-total span { display: block; font-size: .85rem; color: var(--muted); font-weight: 600; }
+  .sd-total b { font-size: 2rem; color: var(--navy); line-height: 1.1; }
+  .sd-total p { font-size: .8rem; color: var(--muted); text-align: end; }
+  .sd-order-btn, .sd-wide { width: 100%; margin-top: .9rem; }
+  .sd-order-btn .ic, .sd-wide .ic { width: 20px; height: 20px; }
+  .sd-styles { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+  .sd-styles button { display: flex; align-items: center; gap: .5rem; text-align: start; }
+  .sd-styles button[aria-pressed='true'] { border-color: var(--navy); background: var(--navy); color: #fff; }
+  .sw { width: 18px; height: 18px; border-radius: 6px; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
+  .sw-modern { background: linear-gradient(135deg, #F2F1EE 50%, #C8A57A 50%); }
+  .sw-classic { background: linear-gradient(135deg, #EFE6D6 50%, #7B5434 50%); }
+  .sw-najdi { background: linear-gradient(135deg, #E3CFAE 50%, #9E2B25 50%); }
+  .sw-scandi { background: linear-gradient(135deg, #FAFAF8 50%, #E2CDAF 50%); }
+  .sw-luxury { background: linear-gradient(135deg, #2C2A29 50%, #C6A15B 50%); }
+  .sd-switch { display: flex; align-items: center; gap: .6rem; margin-top: .75rem; font-weight: 600; font-size: .92rem; cursor: pointer; }
+  .sd-switch input { width: 18px; height: 18px; accent-color: var(--navy); }
+  .sd-rooms { list-style: none; display: grid; gap: .35rem; }
+  .sd-rooms li { display: grid; grid-template-columns: 1fr auto; gap: .2rem .6rem; align-items: center; padding: .55rem .65rem; border-radius: 10px; background: var(--paper); }
+  .sd-rooms input { font: 600 .92rem var(--font); border: 0; background: transparent; color: var(--ink); min-width: 0; padding: .1rem 0; border-bottom: 1px dashed transparent; }
+  .sd-rooms input:focus { outline: none; border-bottom-color: var(--blue); }
+  .sd-rooms b { font-size: .92rem; direction: ltr; }
+  .sd-rooms select { font: 500 .8rem var(--font); color: var(--muted); border: 0; background: transparent; padding: 0; }
+  .sd-rooms small { font-size: .78rem; color: var(--muted); text-align: end; }
+  .sd-boq { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  .sd-boq td { padding: .45rem .2rem; border-bottom: 1px solid var(--line); }
+  .sd-boq td:last-child { text-align: end; font-weight: 700; direction: ltr; white-space: nowrap; }
+  .sd-exports { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+  .sd-exports .btn { padding: .7rem .4rem; font-size: .85rem; }
+  .sd-layers { list-style: none; display: grid; gap: .3rem; max-height: 260px; overflow-y: auto; }
+  .sd-layers li { display: grid; grid-template-columns: 1fr auto; gap: .5rem; align-items: center; font-size: .86rem; padding: .35rem .5rem; border-radius: 8px; background: var(--paper); }
+  .sd-layers li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sd-layers li small { color: var(--muted); display: block; font-size: .75rem; }
+  .sd-layers select, .sd-field select, .sd-field input { font: 500 .86rem var(--font); border: 1.5px solid var(--line); border-radius: 8px; padding: .35rem .45rem; background: #fff; color: var(--ink); }
+  .sd-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .8rem; }
+  .sd-field { display: grid; gap: .25rem; font-size: .82rem; font-weight: 600; }
+
+  .sd-stage { position: relative; min-height: 0; background: #F3F6F8; overflow: hidden; }
+  .sd-view { position: absolute; inset: 0; }
+  .sd-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; text-align: center; gap: .8rem; padding: 2rem; }
+  .sd-empty .ic { width: 64px; height: 64px; color: var(--blue); }
+  .sd-empty h1 { font-size: var(--s3); }
+  .sd-empty p { color: var(--muted); max-width: 30rem; }
+  .sd-busy { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1rem; background: rgba(243,246,248,.8); font-weight: 600; z-index: 5; }
+  .sd-busy[hidden] { display: none; }
+  .sd-busy i { width: 42px; height: 42px; border-radius: 50%; border: 4px solid var(--line); border-top-color: var(--amber); animation: sdspin 0.9s linear infinite; }
+  @keyframes sdspin { to { transform: rotate(360deg); } }
+  .sd-tools { position: absolute; top: 12px; inset-inline-start: 12px; inset-inline-end: 12px; display: flex; flex-wrap: wrap; gap: .5rem; z-index: 3; pointer-events: none; }
+  .sd-tools > * { pointer-events: auto; }
+  .sd-seg { display: inline-flex; background: #fff; border-radius: 12px; padding: 4px; box-shadow: 0 6px 18px -8px rgba(6,26,45,.3); }
+  .sd-seg button, .sd-tool { font: 700 .88rem/1 var(--font); border: 0; background: transparent; color: var(--muted); padding: .6rem .9rem; border-radius: 9px; cursor: pointer; }
+  .sd-seg button[aria-pressed='true'] { background: var(--navy); color: #fff; }
+  .sd-tool { background: #fff; box-shadow: 0 6px 18px -8px rgba(6,26,45,.3); border-radius: 12px; }
+  .sd-tool[aria-pressed='true'] { background: var(--amber); color: var(--navy); }
+  .sd-ico { display: grid; place-items: center; width: 40px; padding: 0; }
+  .sd-ico svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .sd-walk { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: .5rem; z-index: 3; }
+  .sd-walk p { background: rgba(10,37,62,.82); color: #fff; font-size: .8rem; padding: .35rem .8rem; border-radius: 999px; }
+  .sd-pad { display: grid; grid-template-columns: repeat(3, 52px); gap: 6px; }
+  .sd-pad button { height: 52px; border-radius: 14px; border: 0; background: rgba(255,255,255,.92); box-shadow: 0 6px 18px -8px rgba(6,26,45,.35); font-size: 1.2rem; color: var(--navy); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .sd-pad button:active { background: var(--amber); }
+
+  .sd-dlg { border: 0; border-radius: 22px; padding: 0; width: min(760px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); box-shadow: 0 40px 90px -30px rgba(6,26,45,.6); }
+  .sd-dlg::backdrop { background: rgba(6,26,45,.55); }
+  .sd-dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: #fff; z-index: 2; }
+  .sd-dlg-head h2 { font-size: 1.15rem; }
+  .sd-x { width: 38px; height: 38px; border-radius: 10px; border: 0; background: var(--paper); font-size: 1.5rem; cursor: pointer; line-height: 1; }
+  .sd-dlg .of { border: 0; box-shadow: none; border-radius: 0; }
+  .sd-render-out { padding: 1rem 1.25rem; min-height: 200px; display: grid; place-items: center; text-align: center; color: var(--muted); }
+  .sd-render-out img { width: 100%; border-radius: 14px; }
+  .sd-dlg-foot { display: flex; gap: .6rem; justify-content: flex-end; flex-wrap: wrap; padding: 0 1.25rem 1.25rem; }
+
+  @media (max-width: 900px) {
+    .sd { grid-template-columns: 1fr; grid-template-rows: 55% 45%; }
+    .sd-stage { grid-row: 1; }
+    .sd-panel { grid-row: 2; border-inline-end: 0; border-top: 1px solid var(--line); padding-bottom: 5rem; }
+    .sd-pad { grid-template-columns: repeat(3, 46px); }
+    .sd-pad button { height: 46px; }
+  }
+</style>

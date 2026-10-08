@@ -1,0 +1,286 @@
+---
+// Floating AI chat. Each message goes to the n8n workflow "Oxira Design" (Design chat).
+// On the studio page the current plan summary (rooms, areas, style) is sent along as `context`.
+import { t, CONTACT, N8N, type Lang } from '../i18n/content';
+import { link } from '../lib/routes';
+import Logo from './Logo.astro';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = t[lang].chat;
+const endpoint = import.meta.env.PUBLIC_CHAT_ENDPOINT || N8N.chat;
+---
+<div class="oxchat" id="oxchat"
+     data-endpoint={endpoint}
+     data-lang={lang}
+     data-welcome={c.welcome}
+     data-typing={c.typing}
+     data-error={c.error}
+     data-error-action={c.errorAction}
+     data-whatsapp={CONTACT.whatsapp}>
+  <section class="ox-panel" id="ox-panel" role="dialog" aria-labelledby="ox-title" hidden>
+    <header class="ox-head">
+      <span class="ox-avatar"><Logo variant="dark" wordmark={false} /></span>
+      <div class="ox-who">
+        <h2 id="ox-title">{c.title}</h2>
+        <p><span class="ox-dot" aria-hidden="true"></span>{c.status}</p>
+      </div>
+      <button type="button" class="ox-x" id="ox-close" aria-label={c.close}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
+    </header>
+
+    <ol class="ox-log" id="ox-log" aria-live="polite"></ol>
+
+    <div class="ox-suggest" id="ox-suggest">
+      {c.suggestions.map((s) => <button type="button">{s}</button>)}
+    </div>
+
+    <form class="ox-input" id="ox-form">
+      <label class="sr-only" for="ox-text">{c.placeholder}</label>
+      <textarea id="ox-text" rows="1" maxlength="2000" placeholder={c.placeholder} autocomplete="off"></textarea>
+      <button type="submit" class="ox-send" aria-label={c.send}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5z" /></svg>
+      </button>
+    </form>
+    <p class="ox-note">{c.disclaimer} <a href={link(lang, '/privacy/')}>{t[lang].privacy.title}</a></p>
+  </section>
+
+  <button type="button" class="ox-fab" id="ox-fab" aria-controls="ox-panel" aria-expanded="false" aria-label={c.open}>
+    <svg class="ox-fab-chat" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M6 7h20a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H14l-6 5v-5H6a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3z" />
+      <circle cx="11" cy="15.5" r="1.7" /><circle cx="16" cy="15.5" r="1.7" /><circle cx="21" cy="15.5" r="1.7" />
+    </svg>
+    <svg class="ox-fab-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+    <span class="ox-fab-label">{c.title}</span>
+  </button>
+</div>
+
+<script>
+  const root = document.getElementById('oxchat') as HTMLElement | null;
+  if (root) {
+    const d = root.dataset;
+    const panel = document.getElementById('ox-panel') as HTMLElement;
+    const fab = document.getElementById('ox-fab') as HTMLButtonElement;
+    const closeBtn = document.getElementById('ox-close') as HTMLButtonElement;
+    const log = document.getElementById('ox-log') as HTMLOListElement;
+    const form = document.getElementById('ox-form') as HTMLFormElement;
+    const box = document.getElementById('ox-text') as HTMLTextAreaElement;
+    const suggest = document.getElementById('ox-suggest') as HTMLElement;
+    let busy = false;
+    let started = false;
+
+    // One id per visitor, so the agent remembers the conversation
+    const KEY = 'oxira-design-chat-session';
+    const newId = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)).replace(/[^a-zA-Z0-9]/g, '');
+    let sessionId = '';
+    try { sessionId = sessionStorage.getItem(KEY) || ''; } catch {}
+    if (!sessionId) {
+      sessionId = newId();
+      try { sessionStorage.setItem(KEY, sessionId); } catch {}
+    }
+
+    // Escape, then allow **bold**, "- " lists and line breaks
+    const render = (text: string) => {
+      const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const lines = esc.split('\n');
+      let html = '';
+      let inList = false;
+      for (const raw of lines) {
+        const line = raw.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        const item = line.match(/^\s*[-•]\s+(.*)$/);
+        if (item) {
+          if (!inList) { html += '<ul>'; inList = true; }
+          html += `<li>${item[1]}</li>`;
+        } else {
+          if (inList) { html += '</ul>'; inList = false; }
+          html += line.trim() ? `<p>${line}</p>` : '';
+        }
+      }
+      if (inList) html += '</ul>';
+      return html;
+    };
+
+    const add = (from: 'me' | 'bot', text: string, extra?: HTMLElement) => {
+      const li = document.createElement('li');
+      li.className = `ox-msg ox-${from}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'ox-bubble';
+      bubble.dir = 'auto';
+      if (from === 'bot') bubble.innerHTML = render(text);
+      else bubble.textContent = text;
+      if (extra) bubble.appendChild(extra);
+      li.appendChild(bubble);
+      log.appendChild(li);
+      log.scrollTop = log.scrollHeight;
+      return li;
+    };
+
+    const typing = () => {
+      const li = document.createElement('li');
+      li.className = 'ox-msg ox-bot ox-typing';
+      li.innerHTML = `<div class="ox-bubble" aria-label="${d.typing}"><i></i><i></i><i></i></div>`;
+      log.appendChild(li);
+      log.scrollTop = log.scrollHeight;
+      return li;
+    };
+
+    const open = () => {
+      panel.hidden = false;
+      root.classList.add('is-open');
+      fab.setAttribute('aria-expanded', 'true');
+      if (!started) { add('bot', d.welcome!); started = true; }
+      setTimeout(() => box.focus(), 50);
+    };
+    const close = () => {
+      panel.hidden = true;
+      root.classList.remove('is-open');
+      fab.setAttribute('aria-expanded', 'false');
+      fab.focus();
+    };
+    fab.addEventListener('click', () => (panel.hidden ? open() : close()));
+    closeBtn.addEventListener('click', close);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) close(); });
+
+    const send = async (text: string) => {
+      text = text.trim();
+      if (!text || busy) return;
+      busy = true;
+      suggest.hidden = true;
+      add('me', text);
+      box.value = '';
+      box.style.height = '';
+      const dots = typing();
+      try {
+        const res = await fetch(d.endpoint!, {
+          method: 'POST',
+          // Form-encoded keeps this a simple cross-origin request (no CORS preflight)
+          body: new URLSearchParams({ sessionId, message: text, lang: d.lang!, page: location.href, context: String((window as any).oxDesignContext || '').slice(0, 3000) }),
+        });
+        const out = await res.json();
+        dots.remove();
+        if (!out.reply) throw new Error('empty');
+        add('bot', out.reply);
+      } catch {
+        dots.remove();
+        const a = document.createElement('a');
+        a.href = `${d.whatsapp}?text=${encodeURIComponent(text)}`;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.className = 'ox-wa';
+        a.textContent = d.errorAction!;
+        add('bot', d.error!, a);
+      } finally {
+        busy = false;
+        box.focus();
+      }
+    };
+
+    form.addEventListener('submit', (e) => { e.preventDefault(); send(box.value); });
+    // Any element with data-open-chat opens the panel (optionally sending its data-ask text).
+    document.addEventListener('click', (e) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-open-chat]');
+      if (!el) return;
+      e.preventDefault();
+      if (panel.hidden) open();
+      if (el.dataset.ask) send(el.dataset.ask);
+    });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(box.value); }
+    });
+    box.addEventListener('input', () => {
+      box.style.height = '';
+      box.style.height = Math.min(box.scrollHeight, 120) + 'px';
+    });
+    suggest.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => send(b.textContent || '')));
+  }
+</script>
+
+<style is:global>
+  .oxchat { position: fixed; z-index: 50; inset-inline-end: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+  html[dir='rtl'] .oxchat { align-items: flex-start; }
+
+  .ox-fab {
+    display: inline-flex; align-items: center; gap: .6rem; cursor: pointer;
+    background: var(--navy); color: #fff; border: 0; border-radius: 999px;
+    padding: .55rem 1.2rem .55rem .55rem; font: 700 .98rem/1 var(--font);
+    box-shadow: 0 14px 30px -10px rgba(7,27,47,.55), inset 0 0 0 2px rgba(255,255,255,.08);
+  }
+  html[dir='rtl'] .ox-fab { padding: .55rem .55rem .55rem 1.2rem; }
+  .ox-fab:hover { background: var(--navy-mid); }
+  .ox-fab svg { width: 44px; height: 44px; padding: 9px; border-radius: 50%; background: var(--amber); flex: none; }
+  .ox-fab-chat { fill: var(--navy); }
+  .ox-fab-chat circle { fill: var(--amber); }
+  .ox-fab-x { display: none; stroke: var(--navy); stroke-width: 2.6; stroke-linecap: round; fill: none; }
+  .is-open .ox-fab-chat { display: none; }
+  .is-open .ox-fab-x { display: block; }
+  .is-open .ox-fab-label { display: none; }
+  .is-open .ox-fab { padding: .55rem; }
+
+  .ox-panel {
+    width: min(380px, calc(100vw - 32px)); height: min(600px, calc(100vh - 120px));
+    display: flex; flex-direction: column; overflow: hidden;
+    background: #fff; border-radius: 20px;
+    box-shadow: 0 30px 70px -20px rgba(7,27,47,.5), 0 0 0 1px rgba(10,37,62,.08);
+  }
+  .ox-panel[hidden] { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ox-panel:not([hidden]) { animation: ox-in .22s cubic-bezier(.2,.8,.2,1); }
+    @keyframes ox-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+  }
+
+  .ox-head { display: flex; align-items: center; gap: .75rem; padding: .9rem 1rem; background: var(--navy); color: #fff; }
+  .ox-avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: rgba(255,255,255,.08); font-size: 1.35rem; flex: none; }
+  .ox-who { flex: 1; min-width: 0; }
+  .ox-who h2 { font-size: 1.02rem; line-height: 1.3; }
+  .ox-who p { font-size: .78rem; color: var(--muted-on-navy); display: flex; align-items: center; gap: .4rem; line-height: 1.4; }
+  .ox-dot { width: 8px; height: 8px; border-radius: 50%; background: #3DD68C; box-shadow: 0 0 0 3px rgba(61,214,140,.2); }
+  .ox-x { width: 36px; height: 36px; border-radius: 10px; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center; }
+  .ox-x:hover { background: rgba(255,255,255,.1); }
+  .ox-x svg, .ox-send svg { width: 20px; height: 20px; }
+  .ox-x svg { stroke: #fff; stroke-width: 2.2; stroke-linecap: round; fill: none; }
+
+  .ox-log { list-style: none; margin: 0; padding: 1rem; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: .6rem; background: var(--paper); }
+  .ox-msg { display: flex; }
+  .ox-me { justify-content: flex-end; }
+  .ox-bubble { max-width: 85%; padding: .6rem .85rem; border-radius: 14px; font-size: .94rem; line-height: 1.65; word-wrap: break-word; }
+  .ox-bot .ox-bubble { background: #fff; color: var(--ink); border-start-start-radius: 4px; box-shadow: 0 1px 2px rgba(10,37,62,.08); }
+  .ox-me .ox-bubble { background: var(--navy); color: #fff; border-start-end-radius: 4px; white-space: pre-wrap; }
+  .ox-bubble p { margin: 0; }
+  .ox-bubble p + p, .ox-bubble ul + p, .ox-bubble p + ul { margin-top: .45rem; }
+  .ox-bubble ul { margin: 0; padding-inline-start: 1.1rem; }
+  .ox-bubble li { margin: .15rem 0; }
+  .ox-bubble strong { font-weight: 700; }
+  .ox-bubble .ox-wa { display: inline-block; margin-top: .5rem; background: #0B8A6E; color: #fff; text-decoration: none; font-weight: 700; font-size: .88rem; padding: .4rem .8rem; border-radius: 8px; }
+
+  .ox-typing .ox-bubble { display: flex; gap: 4px; padding: .8rem .9rem; }
+  .ox-typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .4; }
+  @media (prefers-reduced-motion: no-preference) {
+    .ox-typing i { animation: ox-dot 1s infinite ease-in-out; }
+    .ox-typing i:nth-child(2) { animation-delay: .15s; }
+    .ox-typing i:nth-child(3) { animation-delay: .3s; }
+    @keyframes ox-dot { 0%, 100% { opacity: .3; transform: none; } 40% { opacity: .9; transform: translateY(-3px); } }
+  }
+
+  .ox-suggest { display: flex; flex-wrap: wrap; gap: .4rem; padding: .6rem 1rem 0; background: var(--paper); }
+  .ox-suggest[hidden] { display: none; }
+  .ox-suggest button { font: 600 .85rem/1.2 var(--font); padding: .45rem .8rem; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  .ox-suggest button:hover { border-color: var(--blue); color: var(--blue); }
+
+  .ox-input { display: flex; align-items: flex-end; gap: .5rem; padding: .75rem; background: var(--paper); }
+  .ox-input textarea { flex: 1; resize: none; font: 500 .95rem/1.5 var(--font); color: var(--ink); background: #fff; border: 1.5px solid var(--line); border-radius: 14px; padding: .6rem .8rem; max-height: 120px; }
+  .ox-input textarea:focus-visible { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,125,180,.18); }
+  .ox-send { width: 44px; height: 44px; border-radius: 12px; border: 0; background: var(--amber); cursor: pointer; display: grid; place-items: center; flex: none; }
+  .ox-send:hover { background: var(--amber-deep); }
+  .ox-send svg { fill: var(--navy); }
+  html[dir='rtl'] .ox-send svg { transform: scaleX(-1); }
+  .ox-note a { color: var(--blue); }
+  .ox-note { font-size: .72rem; color: var(--muted); text-align: center; padding: 0 1rem .6rem; background: var(--paper); }
+
+  @media (max-width: 520px) {
+    .oxchat { inset-inline-end: 12px; bottom: 12px; }
+    .ox-fab-label { display: none; }
+    .ox-fab, html[dir='rtl'] .ox-fab { padding: .45rem; }
+    .ox-panel { width: calc(100vw - 24px); height: calc(100dvh - 96px); }
+  }
+</style>

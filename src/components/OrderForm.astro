@@ -1,0 +1,193 @@
+---
+// Order form → n8n "Oxira Design" (/webhook/oxira-design-order), multipart with files.
+// The Quick package gets a Moyasar payment link back and the visitor is redirected to pay.
+// On the studio page, window.oxDesignAttach() adds the snapshot, model and plan file automatically.
+import { t, PRICES, N8N, CONTACT, type Lang } from '../i18n/content';
+import { st } from '../i18n/studio';
+import { link } from '../lib/routes';
+
+interface Props { lang: Lang; id?: string; compact?: boolean }
+const { lang, id = 'order-form', compact = false } = Astro.props;
+const c = t[lang];
+const o = c.order;
+const P = c.packages.items;
+const styles = st[lang].style.names;
+const endpoint = import.meta.env.PUBLIC_ORDER_ENDPOINT || N8N.order;
+const pkgs = ['quick', 'design', 'premium', 'developer'] as const;
+---
+<form class={`of${compact ? ' of-compact' : ''}`} id={id} novalidate
+  data-endpoint={endpoint} data-lang={lang}
+  data-prices={JSON.stringify(PRICES)}
+  data-t={JSON.stringify({ sending: o.sending, success: o.success, successNext: o.successNext, redirect: o.redirect, paid: o.paid, cancelled: o.cancelled, error: o.error, tooBig: o.tooBig, required: o.required, submit: o.submit, submitPay: o.submitPay, quote: c.packages.quote, currency: c.packages.currency, vat: lang === 'ar' ? 'شامل الضريبة' : lang === 'de' ? 'inkl. MwSt.' : lang === 'fr' ? 'TTC' : lang === 'ru' ? 'с НДС' : 'incl. VAT', month: c.packages.month })}
+  data-whatsapp={CONTACT.whatsapp}>
+  <div class="of-grid">
+    <label class="of-f of-wide">
+      <span>{o.package}</span>
+      <select name="package">
+        {pkgs.map((p) => <option value={p}>{P[p].name}</option>)}
+      </select>
+    </label>
+    <label class="of-f"><span>{o.name} *</span><input name="name" required autocomplete="name" maxlength="120" /></label>
+    <label class="of-f"><span>{o.phone} *</span><input name="phone" required type="tel" autocomplete="tel" dir="ltr" maxlength="40" /></label>
+    <label class="of-f"><span>{o.email}</span><input name="email" type="email" autocomplete="email" dir="ltr" maxlength="160" /></label>
+    <label class="of-f"><span>{o.city}</span><input name="city" autocomplete="address-level2" maxlength="120" /></label>
+    <label class="of-f"><span>{o.area}</span><input name="area" type="number" min="10" max="20000" step="1" inputmode="numeric" /></label>
+    <label class="of-f"><span>{o.style}</span>
+      <select name="style">{Object.entries(styles).map(([k, v]) => <option value={k}>{v}</option>)}</select>
+    </label>
+    <div class="of-f of-wide of-files-wrap">
+      <span>{o.files}</span>
+      <label class="of-drop">
+        <input type="file" name="plan" multiple accept=".dxf,.dwg,.pdf,.png,.jpg,.jpeg,.zip" />
+        <span class="of-drop-t">{o.filesHint}</span>
+        <ul class="of-list"></ul>
+      </label>
+      <p class="of-studio" hidden>{o.fromStudio}</p>
+    </div>
+    <label class="of-f of-wide"><span>{o.notes}</span><textarea name="notes" rows="3" maxlength="3000"></textarea></label>
+  </div>
+  <div class="of-foot">
+    <p class="of-est"><span>{o.estimate}:</span> <b class="of-est-v">—</b></p>
+    <button type="submit" class="btn btn-amber of-submit">{o.submitPay}</button>
+  </div>
+  <p class="of-legal">{o.consent} <a href={link(lang, '/privacy/')}>{c.privacy.title}</a>.</p>
+  <div class="of-msg" role="status" aria-live="polite" hidden></div>
+</form>
+
+<script>
+  type Attach = { files: { field: string; name: string; blob: Blob }[]; summary?: string; area?: number; style?: string };
+  document.querySelectorAll<HTMLFormElement>('form.of').forEach((form) => {
+    const d = form.dataset;
+    const T = JSON.parse(d.t!);
+    const PR = JSON.parse(d.prices!);
+    const pkg = form.querySelector<HTMLSelectElement>('[name=package]')!;
+    const area = form.querySelector<HTMLInputElement>('[name=area]')!;
+    const style = form.querySelector<HTMLSelectElement>('[name=style]')!;
+    const files = form.querySelector<HTMLInputElement>('[name=plan]')!;
+    const list = form.querySelector<HTMLUListElement>('.of-list')!;
+    const est = form.querySelector<HTMLElement>('.of-est-v')!;
+    const submit = form.querySelector<HTMLButtonElement>('.of-submit')!;
+    const msg = form.querySelector<HTMLElement>('.of-msg')!;
+    const studioNote = form.querySelector<HTMLElement>('.of-studio')!;
+    const fmt = (n: number) => new Intl.NumberFormat(d.lang === 'ar' ? 'ar-SA-u-nu-latn' : d.lang, { maximumFractionDigits: 0 }).format(n);
+    const money = (n: number) => `${fmt(n)} ${T.currency}` + (d.lang !== 'ar' ? ` (≈ $${fmt(n / PR.usd)})` : '');
+
+    const refresh = () => {
+      const p = pkg.value;
+      const a = parseFloat(area.value) || 0;
+      if (p === 'quick') est.textContent = `${money(PR.quick * (1 + PR.vat))} ${T.vat}`;
+      else if (p === 'design' && a > 0) est.textContent = `≈ ${money(Math.max(PR.designMin, a * PR.designPerM2) * (1 + PR.vat))} ${T.vat}`;
+      else if (p === 'developer') est.textContent = `${money(PR.developer)} / ${T.month}`;
+      else est.textContent = T.quote;
+      submit.textContent = p === 'quick' ? T.submitPay : T.submit;
+    };
+    pkg.addEventListener('change', refresh);
+    area.addEventListener('input', refresh);
+
+    const showFiles = () => {
+      list.innerHTML = '';
+      for (const f of Array.from(files.files || [])) {
+        const li = document.createElement('li');
+        li.textContent = `${f.name} · ${(f.size / 1048576).toFixed(1)} MB`;
+        list.appendChild(li);
+      }
+    };
+    files.addEventListener('change', showFiles);
+
+    // studio integration and package preselect
+    const syncStudio = () => {
+      const w = window as any;
+      studioNote.hidden = !w.oxDesignAttach;
+      if (w.oxDesignArea && !area.value) area.value = String(Math.round(w.oxDesignArea));
+      if (w.oxDesignStyle) style.value = w.oxDesignStyle;
+      refresh();
+    };
+    form.addEventListener('ox-sync', syncStudio);
+    syncStudio();
+    document.addEventListener('click', (e) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-package]');
+      if (!el) return;
+      pkg.value = el.dataset.package!;
+      refresh();
+    });
+
+    const say = (html: string, ok = true) => { msg.hidden = false; msg.className = 'of-msg ' + (ok ? 'is-ok' : 'is-err'); msg.innerHTML = html; };
+
+    // back from the payment page
+    const q = new URLSearchParams(location.search);
+    if (q.get('paid')) say(`<b>${T.paid} #${q.get('paid')!.replace(/\D/g, '')}</b><br>${T.successNext}`);
+    else if (q.get('cancel')) say(T.cancelled, false);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      if (!String(fd.get('name') || '').trim() || !String(fd.get('phone') || '').trim()) { say(T.required, false); return; }
+      fd.delete('plan');
+      let size = 0;
+      Array.from(files.files || []).forEach((f, i) => { fd.append(`plan${i}`, f, f.name); size += f.size; });
+      const w = window as any;
+      if (w.oxDesignAttach) {
+        try {
+          const a: Attach = await w.oxDesignAttach();
+          for (const f of a.files) { if (size + f.blob.size > 15 * 1048576) continue; fd.append(f.field, f.blob, f.name); size += f.blob.size; }
+          if (a.summary) fd.set('summary', a.summary);
+        } catch {}
+      }
+      if (size > 15 * 1048576) { say(T.tooBig, false); return; }
+      fd.set('lang', d.lang!);
+      fd.set('page', location.href.split('?')[0]);
+      fd.set('returnUrl', location.href.split('?')[0].split('#')[0]);
+      submit.disabled = true;
+      const label = submit.textContent;
+      submit.textContent = T.sending;
+      msg.hidden = true;
+      try {
+        const res = await fetch(d.endpoint!, { method: 'POST', body: fd });
+        const out = await res.json();
+        if (!out.success) throw new Error(out.reason || 'failed');
+        if (out.payUrl) {
+          say(`${T.success} <b>#${out.orderId}</b>. ${T.redirect}`);
+          setTimeout(() => { location.href = out.payUrl; }, 900);
+          return;
+        }
+        say(`<b>${T.success} #${out.orderId}</b><br>${T.successNext}`);
+        form.reset();
+        list.innerHTML = '';
+        refresh();
+      } catch {
+        const text = encodeURIComponent(`${fd.get('name')} - ${fd.get('package')} - ${fd.get('phone')}\n${fd.get('notes') || ''}`);
+        say(`${T.error} <a href="${d.whatsapp}?text=${text}" target="_blank" rel="noopener">WhatsApp</a>`, false);
+      } finally {
+        submit.disabled = false;
+        submit.textContent = label;
+      }
+    });
+    refresh();
+  });
+</script>
+
+<style is:global>
+  .of { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: clamp(1.25rem, 3vw, 2.25rem); box-shadow: 0 30px 60px -40px rgba(6,26,45,.35); color: var(--ink); }
+  .of-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.1rem; }
+  .of-compact .of-grid { grid-template-columns: 1fr 1fr; }
+  .of-wide { grid-column: 1 / -1; }
+  .of-f { display: grid; gap: .35rem; font-weight: 600; font-size: .95rem; }
+  .of-f input, .of-f select, .of-f textarea { font: 500 1rem/1.4 var(--font); color: var(--ink); border: 1.5px solid var(--line); border-radius: 12px; padding: .75rem .9rem; background: #fff; width: 100%; }
+  .of-f textarea { resize: vertical; }
+  .of-f :is(input, select, textarea):focus-visible { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,125,180,.16); }
+  .of-drop { position: relative; display: grid; place-items: center; gap: .4rem; padding: 1.2rem; border: 1.5px dashed #B9C6D2; border-radius: 14px; background: var(--paper); cursor: pointer; text-align: center; font-weight: 500; color: var(--muted); }
+  .of-drop:hover { border-color: var(--blue); }
+  .of-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .of-list { list-style: none; font-size: .88rem; color: var(--ink); direction: ltr; }
+  .of-studio { font-size: .88rem; color: #0B7A55; font-weight: 600; background: #E9F7F1; padding: .5rem .75rem; border-radius: 10px; }
+  .of-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.4rem; }
+  .of-est { color: var(--muted); }
+  .of-est b { color: var(--ink); }
+  .of-legal { margin-top: .9rem; font-size: .82rem; color: var(--muted); }
+  .of-legal a { color: var(--blue); }
+  .of-msg { margin-top: 1rem; padding: .9rem 1rem; border-radius: 12px; font-weight: 500; }
+  .of-msg.is-ok { background: #E9F7F1; color: #0B5E42; }
+  .of-msg.is-err { background: #FDECEC; color: #9B1C1C; }
+  .of-msg a { color: inherit; font-weight: 700; }
+  @media (max-width: 640px) { .of-grid, .of-compact .of-grid { grid-template-columns: 1fr; } .of-submit { width: 100%; } }
+</style>

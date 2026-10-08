@@ -1,0 +1,16 @@
+---
+import { t, CONTACT, type Lang } from '../i18n/content';
+interface Props { lang: Lang }
+const p = t[Astro.props.lang].privacy;
+---
+<section class="page-hero"><div class="wrap"><h1>{p.title}</h1><p class="lead">{p.updated}</p></div></section>
+<section class="section-tight"><div class="wrap pv">
+  {p.sections.map((s) => <article><h2>{s.h}</h2><p>{s.p}</p></article>)}
+  <p class="pv-c"><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></p>
+</div></section>
+<style>
+  .pv { max-width: 46rem; display: grid; gap: 2rem; }
+  .pv h2 { font-size: 1.3rem; margin-bottom: .5rem; }
+  .pv p { color: var(--muted); }
+  .pv-c a { color: var(--blue); font-weight: 700; }
+</style>

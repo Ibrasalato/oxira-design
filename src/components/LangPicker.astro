@@ -1,0 +1,86 @@
+---
+// Language picker: flag + native language name. Used in the header (light) and footer (dark, opens upward).
+import { languages, type Lang } from '../i18n/content';
+import { link, asset } from '../lib/routes';
+
+interface Props { lang: Lang; path: string; langs?: Lang[]; tone?: 'light' | 'dark'; up?: boolean }
+const { lang, path, langs, tone = 'light', up = false } = Astro.props;
+const current = languages.find((l) => l.code === lang)!;
+const label: Record<Lang, string> = { ar: 'اللغة', en: 'Language', de: 'Sprache', fr: 'Langue', ru: 'Язык' };
+---
+<details class={`lp lp-${tone}${up ? ' lp-up' : ''}`}>
+  <summary>
+    <span class="sr-only">{label[lang]}: </span>
+    <img class="lp-flag" src={asset(`flags/${current.flag}.svg`)} alt="" width="20" height="15" />
+    <span class="lp-name">{current.name}</span>
+    <span class="lp-code" aria-hidden="true">{current.code.toUpperCase()}</span>
+    <span class="lp-caret" aria-hidden="true"></span>
+  </summary>
+  <ul class="lp-menu" role="list">
+    {languages.map((l) => (
+      <li>
+        <a href={link(l.code, !langs || langs.includes(l.code) ? path : '/')} hreflang={l.code} lang={l.code} aria-current={l.code === lang ? 'true' : undefined}>
+          <img class="lp-flag" src={asset(`flags/${l.flag}.svg`)} alt="" width="20" height="15" loading="lazy" />
+          <span>{l.name}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</details>
+
+<script>
+  // Close any open picker on outside click or Escape.
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll<HTMLDetailsElement>('details.lp[open]').forEach((d) => {
+      if (!d.contains(e.target as Node)) d.open = false;
+    });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll<HTMLDetailsElement>('details.lp[open]').forEach((d) => {
+      d.open = false;
+      d.querySelector('summary')?.focus();
+    });
+  });
+</script>
+
+<style>
+  .lp { position: relative; }
+  .lp summary {
+    list-style: none; display: inline-flex; align-items: center; gap: .5rem; cursor: pointer;
+    font-weight: 600; font-size: .95rem; padding: .5rem .7rem; border-radius: 10px;
+    border: 1.5px solid transparent; user-select: none; white-space: nowrap;
+  }
+  .lp summary::-webkit-details-marker { display: none; }
+  .lp-flag { width: 20px; height: 15px; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px rgba(10,37,62,.12); flex: none; }
+  .lp-code { display: none; }
+  .lp-caret { width: .4em; height: .4em; border-bottom: 2px solid currentColor; border-inline-end: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); opacity: .7; }
+  .lp[open] .lp-caret { transform: translateY(2px) rotate(-135deg); }
+
+  .lp-light summary { color: var(--muted); }
+  .lp-light summary:hover, .lp-light[open] summary { color: var(--ink); border-color: var(--line); }
+  .lp-dark summary { color: var(--muted-on-navy); padding-inline: 0; }
+  .lp-dark summary:hover, .lp-dark[open] summary { color: #fff; }
+
+  .lp-menu {
+    position: absolute; top: calc(100% + .4rem); inset-inline-end: 0; z-index: 60; min-width: 11.5rem;
+    list-style: none; margin: 0; padding: .4rem; background: #fff; border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 18px 40px -12px rgba(6,26,45,.25);
+  }
+  .lp-up .lp-menu { top: auto; bottom: calc(100% + .4rem); }
+  .lp-menu a {
+    display: flex; align-items: center; gap: .7rem; padding: .6rem .75rem; border-radius: 9px;
+    text-decoration: none; color: var(--ink); font-weight: 500; font-size: .97rem;
+  }
+  .lp-menu a:hover { background: var(--paper); color: var(--ink); }
+  .lp-menu a[aria-current] { font-weight: 700; background: var(--blue-soft); }
+  .lp-menu a[aria-current]::after {
+    content: ''; margin-inline-start: auto; width: .35em; height: .7em;
+    border-bottom: 2px solid var(--blue); border-right: 2px solid var(--blue); transform: rotate(45deg);
+  }
+
+  @media (max-width: 560px) {
+    .lp-light .lp-name { display: none; }
+    .lp-light .lp-code { display: inline; }
+  }
+</style>

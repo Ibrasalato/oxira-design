@@ -1,0 +1,292 @@
+---
+import { t, PRICES, type Lang } from '../i18n/content';
+import { st } from '../i18n/studio';
+import { link, asset } from '../lib/routes';
+import Icon from './Icon.astro';
+import OrderForm from './OrderForm.astro';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const c = t[lang];
+const s = st[lang];
+const studio = link(lang, '/studio/');
+const fmt = (n: number) => new Intl.NumberFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : lang, { maximumFractionDigits: 0 }).format(n);
+const usd = (n: number) => (lang === 'ar' ? '' : `≈ $${fmt(n / PRICES.usd)}`);
+const free = { ar: 'مجاناً', en: 'Free', de: 'Kostenlos', fr: 'Gratuit', ru: 'Бесплатно' }[lang];
+const P = c.packages;
+const cards = [
+  { id: 'free', price: free, unit: '', sub: '', href: studio, primary: false },
+  { id: 'quick', price: fmt(PRICES.quick), unit: P.currency, sub: usd(PRICES.quick), href: '#order', primary: true },
+  { id: 'design', price: fmt(PRICES.designPerM2), unit: `${P.currency} ${P.perM2}`, sub: `${P.min} ${fmt(PRICES.designMin)} ${P.currency}`, href: '#order', primary: false },
+  { id: 'premium', price: P.quote, unit: '', sub: '', href: '#order', primary: false },
+] as const;
+const audienceIcons = ['user', 'building', 'megaphone', 'pencil'];
+---
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="label">{c.hero.kicker}</p>
+      <h1>{c.hero.title}</h1>
+      <p class="lead">{c.hero.lead}</p>
+      <div class="hero-cta">
+        <a class="btn btn-amber" href={studio}><Icon name="upload" />{c.cta.studio}</a>
+        <button type="button" class="btn btn-ghost" data-open-chat><Icon name="bot" />{c.cta.chat}</button>
+      </div>
+      <p class="hero-note"><Icon name="check" />{c.hero.note}</p>
+      <dl class="hero-stats">
+        {c.hero.stats.map(([a, b]) => <div><dt>{a}</dt><dd>{b}</dd></div>)}
+      </dl>
+    </div>
+    <div class="hero-vis">
+      <div class="h3d" id="hero3d" data-sample={asset('samples/apartment-3br.dxf')}>
+        <svg class="h3d-ph" viewBox="0 0 400 300" aria-hidden="true">
+          <g fill="none" stroke="#0A253E" stroke-width="3" opacity=".25">
+            <path d="M200 40 360 120 200 200 40 120z" /><path d="M40 120v60l160 80 160-80v-60" /><path d="M200 200v60" /><path d="M120 80l160 80M280 80l-160 80" />
+          </g>
+        </svg>
+        <span class="h3d-badge"><i></i>{c.hero.live}</span>
+      </div>
+      <div class="h3d-styles" role="group" aria-label={s.style.title}>
+        {Object.entries(s.style.names).map(([k, v], i) => <button type="button" data-style={k} aria-pressed={i === 0 ? 'true' : 'false'}>{v}</button>)}
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section bg-paper" id="how">
+  <div class="wrap">
+    <div class="sh"><p class="label">{c.steps.label}</p><h2>{c.steps.title}</h2></div>
+    <ol class="steps">
+      {c.steps.items.map((it, i) => (
+        <li><span class="steps-n">{i + 1}</span><h3>{it.t}</h3><p>{it.d}</p></li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="sh"><p class="label">{c.split.label}</p><h2>{c.split.title}</h2><p>{c.split.lead}</p></div>
+    <div class="split">
+      <div class="split-col split-auto">
+        <h3><Icon name="bot" />{c.split.auto.t}</h3>
+        <ul>{c.split.auto.items.map((x) => <li><Icon name="check" />{x}</li>)}</ul>
+      </div>
+      <div class="split-col split-team">
+        <h3><Icon name="people" />{c.split.team.t}</h3>
+        <ul>{c.split.team.items.map((x) => <li><Icon name="check" />{x}</li>)}</ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section bg-navy" id="features">
+  <div class="wrap">
+    <div class="sh-row">
+      <div class="sh"><p class="label">{c.features.label}</p><h2>{c.features.title}</h2></div>
+      <a class="btn btn-amber" href={studio}>{c.cta.studio}</a>
+    </div>
+    <ul class="feats">
+      {c.features.items.map((f) => <li><Icon name={f.i} /><h3>{f.t}</h3><p>{f.d}</p></li>)}
+    </ul>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="sh"><p class="label">{c.audience.label}</p><h2>{c.audience.title}</h2></div>
+    <ul class="aud">
+      {c.audience.items.map((a, i) => <li><Icon name={audienceIcons[i]} /><h3>{a.t}</h3><p>{a.d}</p></li>)}
+    </ul>
+  </div>
+</section>
+
+<section class="section bg-paper" id="packages">
+  <div class="wrap">
+    <div class="sh"><p class="label">{P.label}</p><h2>{P.title}</h2><p>{P.lead}</p></div>
+    <ul class="pk">
+      {cards.map((k) => {
+        const it = P.items[k.id];
+        return (
+          <li class={k.primary ? 'is-pop' : ''}>
+            {k.primary && <span class="pk-pop">{P.popular}</span>}
+            <h3>{it.name}</h3>
+            <p class="pk-desc">{it.desc}</p>
+            <p class="pk-price"><b>{k.price}</b>{k.unit && <span>{k.unit}</span>}</p>
+            <p class="pk-sub">{k.sub || ' '}</p>
+            <ul>{it.features.map((f) => <li><Icon name="check" />{f}</li>)}</ul>
+            <a class={`btn ${k.primary ? 'btn-amber' : k.id === 'free' ? 'btn-navy' : 'btn-ghost'}`} href={k.href} data-package={k.id === 'free' ? undefined : k.id}>{it.cta}</a>
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+</section>
+
+<section class="section" id="developers">
+  <div class="wrap dev">
+    <div>
+      <p class="label">{c.developers.label}</p>
+      <h2>{c.developers.title}</h2>
+      <p class="dev-lead">{c.developers.lead}</p>
+      <ul class="dev-pts">{c.developers.points.map((x) => <li><Icon name="check" />{x}</li>)}</ul>
+    </div>
+    <div class="dev-card">
+      <p class="label">{P.items.developer.name}</p>
+      <p class="pk-price"><span class="dev-from">{lang === 'ar' ? 'من' : lang === 'de' ? 'ab' : lang === 'fr' ? 'dès' : lang === 'ru' ? 'от' : 'from'}</span><b>{fmt(PRICES.developer)}</b><span>{P.currency} / {P.month}</span></p>
+      <p class="pk-sub">{usd(PRICES.developer)}</p>
+      <ul>{P.items.developer.features.map((f) => <li><Icon name="check" />{f}</li>)}</ul>
+      <a class="btn btn-amber" href="#order" data-package="developer">{P.items.developer.cta}</a>
+    </div>
+  </div>
+</section>
+
+<section class="section bg-paper" id="faq">
+  <div class="wrap faq">
+    <div class="sh"><p class="label">{c.faq.label}</p><h2>{c.faq.title}</h2>
+      <button type="button" class="btn btn-ghost faq-chat" data-open-chat><Icon name="bot" />{c.cta.chat}</button>
+    </div>
+    <div class="faq-list">
+      {c.faq.items.map((f) => <details><summary>{f.q}</summary><p>{f.a}</p></details>)}
+    </div>
+  </div>
+</section>
+
+<section class="section bg-navy" id="order">
+  <div class="wrap order">
+    <div class="sh"><p class="label">{c.order.label}</p><h2>{c.order.title}</h2><p>{c.order.lead}</p></div>
+    <OrderForm lang={lang} />
+  </div>
+</section>
+
+<script>
+  const host = document.getElementById('hero3d');
+  if (host) {
+    const start = async () => {
+      try {
+        const [{ Viewer }, { readDxf }, { buildPlan }] = await Promise.all([
+          import('../scripts/studio/viewer.ts'), import('../scripts/studio/dxf.ts'), import('../scripts/studio/plan.ts'),
+        ]);
+        const txt = await (await fetch(host.dataset.sample!)).text();
+        const flat = readDxf(txt);
+        const plan = buildPlan(flat, Object.fromEntries(flat.layers.map((l) => [l.name, l.role])), 3);
+        const v = new Viewer(host, { autoRotate: true, interactive: false, labels: (n, a) => `${a.toFixed(1)} m²` });
+        v.setLabels(false);
+        v.setPlan(plan);
+        
+        host.classList.add('is-live');
+        document.querySelectorAll<HTMLButtonElement>('.h3d-styles button').forEach((b) => b.addEventListener('click', () => {
+          document.querySelectorAll('.h3d-styles button').forEach((x) => x.setAttribute('aria-pressed', 'false'));
+          b.setAttribute('aria-pressed', 'true');
+          v.setStyle(b.dataset.style as any);
+        }));
+      } catch (e) { console.warn('hero 3d', e); }
+    };
+    const io = new IntersectionObserver((en) => { if (en[0].isIntersecting) { io.disconnect(); ('requestIdleCallback' in window ? (window as any).requestIdleCallback : setTimeout)(start); } });
+    io.observe(host);
+  }
+</script>
+
+<style>
+  .hero { padding-block: clamp(2.5rem, 6vw, 5rem) clamp(3rem, 7vw, 6rem); background: radial-gradient(80% 60% at 85% 10%, var(--blue-soft), transparent 70%), #fff; }
+  .hero-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+  .hero h1 { font-size: clamp(2.2rem, 4.4vw, 3.5rem); margin-top: .6rem; text-wrap: balance; }
+  .hero .lead { margin-top: 1.2rem; font-size: clamp(1.05rem, 1.5vw, 1.22rem); color: var(--muted); max-width: 40rem; }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+  .hero-cta :global(.ic), .faq-chat :global(.ic) { width: 20px; height: 20px; }
+  .hero-note { display: flex; gap: .5rem; align-items: flex-start; margin-top: 1rem; font-size: .92rem; color: var(--muted); }
+  .hero-note :global(.ic) { width: 18px; height: 18px; color: #0B8A6E; flex: none; margin-top: .25rem; }
+  .hero-stats { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; margin: 2rem 0 0; padding-top: 1.5rem; border-top: 1px solid var(--line); }
+  .hero-stats dt { font-size: 1.5rem; font-weight: 700; color: var(--navy); direction: ltr; text-align: start; }
+  .hero-stats dd { margin: 0; color: var(--muted); font-size: .92rem; }
+  .h3d { position: relative; aspect-ratio: 4 / 3.2; border-radius: var(--radius-lg); overflow: hidden; background: #F3F6F8; box-shadow: 0 40px 80px -40px rgba(6,26,45,.45), 0 0 0 1px rgba(10,37,62,.06); }
+  .h3d-ph { position: absolute; inset: 15%; width: 70%; height: 70%; }
+  .h3d.is-live .h3d-ph { display: none; }
+  .h3d :global(canvas) { position: absolute; inset: 0; cursor: grab; }
+  .h3d-badge { position: absolute; z-index: 2; inset-inline-start: 14px; top: 14px; display: inline-flex; align-items: center; gap: .45rem; background: rgba(10,37,62,.85); color: #fff; font-size: .8rem; font-weight: 600; padding: .35rem .7rem; border-radius: 999px; }
+  .h3d-badge i { width: 8px; height: 8px; border-radius: 50%; background: #3DD68C; box-shadow: 0 0 0 3px rgba(61,214,140,.25); }
+  .h3d-styles { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .9rem; justify-content: center; }
+  .h3d-styles button { font: 600 .88rem/1 var(--font); padding: .55rem .9rem; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; color: var(--muted); cursor: pointer; }
+  .h3d-styles button[aria-pressed='true'] { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+  .steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; counter-reset: s; }
+  .steps li { background: #fff; border-radius: var(--radius); padding: 1.6rem; border: 1px solid var(--line); }
+  .steps-n { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--amber); color: var(--navy); font-weight: 700; margin-bottom: 1rem; }
+  .steps h3 { font-size: 1.15rem; margin-bottom: .4rem; }
+  .steps p { color: var(--muted); font-size: .98rem; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .split-col { border-radius: var(--radius-lg); padding: clamp(1.5rem, 3vw, 2.25rem); }
+  .split-auto { background: var(--blue-soft); }
+  .split-team { background: var(--navy); color: #fff; }
+  .split h3 { display: flex; align-items: center; gap: .6rem; font-size: 1.3rem; margin-bottom: 1.2rem; }
+  .split h3 :global(.ic) { width: 28px; height: 28px; color: var(--blue); }
+  .split-team h3 :global(.ic) { color: var(--amber); }
+  .split ul { list-style: none; display: grid; gap: .7rem; }
+  .split li { display: flex; gap: .6rem; align-items: flex-start; }
+  .split li :global(.ic) { width: 20px; height: 20px; flex: none; margin-top: .3rem; color: #0B8A6E; }
+  .split-team li :global(.ic) { color: var(--amber); }
+
+  .feats { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+  .feats li { background: var(--navy-mid); border-radius: var(--radius); padding: 1.6rem; }
+  .feats :global(.ic) { width: 34px; height: 34px; color: var(--amber); margin-bottom: 1rem; }
+  .feats h3 { font-size: 1.15rem; margin-bottom: .4rem; }
+  .feats p { color: var(--muted-on-navy); }
+
+  .aud { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; }
+  .aud li { border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; }
+  .aud :global(.ic) { width: 32px; height: 32px; color: var(--blue); margin-bottom: .9rem; }
+  .aud h3 { font-size: 1.1rem; margin-bottom: .35rem; }
+  .aud p { color: var(--muted); font-size: .97rem; }
+
+  .pk { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem; align-items: stretch; }
+  .pk > li { position: relative; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.6rem; }
+  .pk > li.is-pop { border: 2px solid var(--amber); box-shadow: 0 30px 60px -35px rgba(219,150,0,.55); }
+  .pk-pop { position: absolute; top: -13px; inset-inline-start: 1.4rem; background: var(--amber); color: var(--navy); font-size: .78rem; font-weight: 700; padding: .25rem .7rem; border-radius: 999px; }
+  .pk h3 { font-size: 1.25rem; }
+  .pk-desc { color: var(--muted); font-size: .95rem; min-height: 3em; margin-top: .3rem; }
+  .pk-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
+  .pk-price b { font-size: 2.1rem; line-height: 1.1; color: var(--navy); }
+  .pk-price span { color: var(--muted); font-weight: 600; font-size: .92rem; }
+  .pk-sub { color: var(--muted); font-size: .85rem; min-height: 1.4em; }
+  .pk ul, .dev-card ul { list-style: none; display: grid; gap: .55rem; margin: 1.2rem 0 1.6rem; flex: 1; }
+  .pk ul li, .dev-card li, .dev-pts li { display: flex; gap: .5rem; align-items: flex-start; font-size: .95rem; }
+  .pk ul :global(.ic), .dev-card :global(.ic), .dev-pts :global(.ic) { width: 18px; height: 18px; flex: none; margin-top: .3rem; color: #0B8A6E; }
+  .pk .btn { width: 100%; }
+
+  .dev { display: grid; grid-template-columns: 1.2fr 1fr; gap: clamp(2rem, 5vw, 4rem); align-items: center; }
+  .dev h2 { font-size: var(--s4); margin-top: .5rem; }
+  .dev-lead { color: var(--muted); font-size: 1.12rem; margin-top: 1rem; }
+  .dev-pts { list-style: none; display: grid; gap: .6rem; margin-top: 1.5rem; }
+  .dev-card { background: var(--navy); color: #fff; border-radius: var(--radius-lg); padding: 2rem; }
+  .dev-card .label { color: var(--amber); }
+  .dev-card .pk-price b { color: #fff; }
+  .dev-card .pk-price span, .dev-card .pk-sub { color: var(--muted-on-navy); }
+  .dev-card :global(.ic) { color: var(--amber); }
+  .dev-card .btn { width: 100%; }
+
+  .faq { display: grid; grid-template-columns: 1fr 1.6fr; gap: clamp(2rem, 5vw, 4rem); align-items: start; }
+  .faq .sh { position: sticky; top: 100px; }
+  .faq-chat { justify-self: start; margin-top: .5rem; }
+  .faq-list details { background: #fff; border: 1px solid var(--line); border-radius: 14px; margin-bottom: .7rem; }
+  .faq-list summary { cursor: pointer; padding: 1.1rem 1.25rem; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 1rem; }
+  .faq-list summary::-webkit-details-marker { display: none; }
+  .faq-list summary::after { content: '+'; font-size: 1.4rem; line-height: 1; color: var(--blue); }
+  .faq-list details[open] summary::after { content: '–'; }
+  .faq-list details p { padding: 0 1.25rem 1.2rem; color: var(--muted); }
+
+  .order { display: grid; grid-template-columns: 1fr 1.5fr; gap: clamp(2rem, 5vw, 4rem); align-items: start; }
+
+  @media (max-width: 1080px) {
+    .pk { grid-template-columns: repeat(2, 1fr); }
+    .steps, .aud { grid-template-columns: repeat(2, 1fr); }
+    .feats { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 900px) {
+    .hero-grid, .split, .dev, .faq, .order { grid-template-columns: 1fr; }
+    .faq .sh { position: static; }
+  }
+  @media (max-width: 600px) {
+    .pk, .steps, .aud, .feats { grid-template-columns: 1fr; }
+  }
+</style>

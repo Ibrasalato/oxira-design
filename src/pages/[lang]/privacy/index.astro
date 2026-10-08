@@ -1,0 +1,10 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Privacy from '../../../components/Privacy.astro';
+import { languages, t, type Lang } from '../../../i18n/content';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar').map((l) => ({ params: { lang: l.code } }));
+}
+const lang = Astro.params.lang as Lang;
+---
+<Base lang={lang} path="/privacy/" title={`${t[lang].privacy.title} | Oxira Design`}><Privacy lang={lang} /></Base>

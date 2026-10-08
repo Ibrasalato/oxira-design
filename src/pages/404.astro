@@ -1,0 +1,15 @@
+---
+import Base from '../layouts/Base.astro';
+import { t } from '../i18n/content';
+const ar = t.ar.notFound, en = t.en.notFound;
+---
+<Base lang="ar" path="/404/" title={`${ar.title} | Oxira Design`} noindex>
+  <section class="page-hero"><div class="wrap">
+    <h1>{ar.title}</h1><p class="lead">{ar.body}</p>
+    <p style="margin-top:1.5rem"><a class="btn btn-navy" href="/">{ar.home}</a></p>
+    <div lang="en" dir="ltr" style="margin-top:3rem;padding-top:2rem;border-top:1px solid var(--line)">
+      <h2>{en.title}</h2><p class="lead">{en.body}</p>
+      <p style="margin-top:1.5rem"><a class="btn btn-ghost" href="/en/">{en.home}</a></p>
+    </div>
+  </div></section>
+</Base>
