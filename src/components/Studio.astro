@@ -13,6 +13,7 @@ const c = t[lang];
 const cfg = {
   lang,
   render: import.meta.env.PUBLIC_RENDER_ENDPOINT || N8N.render,
+  finishing: N8N.finishing,
   samples: { apartment: asset('samples/apartment-3br.dxf'), studio: asset('samples/studio-ar.dxf') },
   whatsapp: CONTACT.whatsapp,
 };
@@ -48,6 +49,7 @@ const cfg = {
         </div>
         <button type="button" class="btn btn-amber sd-order-btn" data-sd-order><Icon name="people" />{s.order.cta}</button>
         <p class="sd-small sd-center">{s.order.sub}</p>
+        <button type="button" class="btn btn-ghost sd-wide sd-quote-btn" data-sd-quote><Icon name="ruler" />{s.quote.cta}</button>
       </section>
 
       <details class="sd-sec" open>
@@ -69,6 +71,8 @@ const cfg = {
         <table class="sd-boq" id="sd-boq"></table>
         <p class="sd-small">{s.boq.note}</p>
         <button type="button" class="sd-link" id="sd-csv">{s.boq.csv}</button>
+        <button type="button" class="btn btn-amber sd-wide sd-quote-btn" id="sd-quote" data-sd-quote><Icon name="ruler" />{s.quote.cta}</button>
+        <p class="sd-small">{s.quote.sub}</p>
       </details>
 
       <details class="sd-sec">
@@ -148,6 +152,26 @@ const cfg = {
   <OrderForm lang={lang} id="studio-order" compact />
 </dialog>
 
+<dialog class="sd-dlg" id="sd-quote-dlg">
+  <div class="sd-dlg-head"><h2>{s.quote.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
+  <form class="sd-quote" id="sd-quote-form" novalidate>
+    <p class="sd-small">{s.quote.lead}</p>
+    <div class="sd-quote-sum" id="sd-quote-sum"></div>
+    <label class="sd-field"><span>{s.quote.name}</span><input name="name" required maxlength="80" autocomplete="name" /></label>
+    <label class="sd-field"><span>{s.quote.phone}</span><input name="phone" required type="tel" inputmode="tel" maxlength="30" autocomplete="tel" dir="ltr" /></label>
+    <div class="sd-row2">
+      <label class="sd-field"><span>{s.quote.city}</span><input name="city" maxlength="60" autocomplete="address-level2" /></label>
+      <label class="sd-field"><span>{s.quote.level}</span>
+        <select name="level">{Object.entries(s.quote.levels).map(([k, v]) => <option value={k} selected={k === 'standard'}>{v}</option>)}</select>
+      </label>
+    </div>
+    <label class="sd-field"><span>{s.quote.email}</span><input name="email" type="email" maxlength="160" autocomplete="email" dir="ltr" /></label>
+    <label class="sd-field"><span>{s.quote.notes}</span><textarea name="notes" rows="2" maxlength="1000"></textarea></label>
+    <p class="sd-quote-msg" id="sd-quote-msg" role="status" hidden></p>
+    <button type="submit" class="btn btn-amber sd-wide" id="sd-quote-send">{s.quote.send}</button>
+  </form>
+</dialog>
+
 <dialog class="sd-dlg sd-dlg-img" id="sd-render-dlg">
   <div class="sd-dlg-head"><h2>{s.render.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
   <div class="sd-render-out" id="sd-render-out"></div>
@@ -196,6 +220,13 @@ const cfg = {
   .sd-samples { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
   .sd-samples button, .sd-styles button { font: 600 .85rem/1.2 var(--font); padding: .5rem .75rem; border-radius: 10px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
   .sd-samples button:hover, .sd-styles button:hover { border-color: var(--blue); }
+  .sd-quote-btn { margin-top: .9rem; }
+  #sd-quote-dlg { width: min(520px, calc(100vw - 24px)); }
+  .sd-quote { display: grid; gap: .75rem; padding: 1rem 1.25rem 1.25rem; }
+  .sd-quote .sd-field input, .sd-quote .sd-field select, .sd-quote textarea { width: 100%; font: inherit; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+  .sd-quote-sum { display: flex; flex-wrap: wrap; gap: .35rem .9rem; padding: .7rem .85rem; border-radius: 12px; background: var(--blue-soft); font-size: .85rem; color: var(--navy); }
+  .sd-quote-msg { padding: .65rem .8rem; border-radius: 10px; background: #FFF6E0; color: #6B4A00; font-size: .9rem; }
+  .sd-quote-msg.is-ok { background: #E7F6EF; color: #0B5E45; }
   .sd-alert { margin-top: .8rem; padding: .75rem .85rem; border-radius: 12px; background: #FFF6E0; color: #6B4A00; font-size: .88rem; }
   .sd-alert .btn { margin-top: .6rem; padding: .55rem .9rem; font-size: .88rem; }
   .sd-link { background: none; border: 0; padding: 0; font: 700 .9rem var(--font); color: #00699A; cursor: pointer; text-decoration: underline; text-underline-offset: .2em; }

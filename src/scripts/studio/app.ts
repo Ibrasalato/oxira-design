@@ -7,7 +7,7 @@ import type { StyleId } from './styles.ts';
 import { st } from '../../i18n/studio';
 import type { Lang } from '../../i18n/content';
 
-type Cfg = { lang: Lang; render: string; samples: Record<string, string>; whatsapp: string };
+type Cfg = { lang: Lang; render: string; finishing: string; samples: Record<string, string>; whatsapp: string };
 
 export function startStudio(root: HTMLElement) {
   const cfg: Cfg = JSON.parse(root.dataset.cfg!);
@@ -370,6 +370,50 @@ export function startStudio(root: HTMLElement) {
     save(new Blob([boqCsv(computeBoq(plan), head, (k) => T.types[k as RoomType] || k)], { type: 'text/csv' }), base() + '-quantities.csv');
   });
   $('sd-render').addEventListener('click', aiRender);
+
+  // finishing quotes: the plan quantities + contact go to the n8n workflow "Oxira Design — Finishing quotes"
+  const qForm = $<HTMLFormElement>('sd-quote-form');
+  const qMsg = $('sd-quote-msg');
+  const qSay = (txt: string, ok = false) => { qMsg.hidden = !txt; qMsg.textContent = txt; qMsg.classList.toggle('is-ok', ok); };
+  document.addEventListener('click', (ev) => {
+    if (!(ev.target as HTMLElement).closest('[data-sd-quote]') || !plan) return;
+    const b = computeBoq(plan);
+    $('sd-quote-sum').innerHTML = [
+      [T.rooms.total, b.total.area, T.boq.m2], [T.boq.floor, b.total.floor, T.boq.m2], [T.boq.paint, b.total.paint, T.boq.m2],
+      [T.boq.wetWalls, b.total.tiles, T.boq.m2], [T.boq.ceiling, b.total.ceiling, T.boq.m2], [T.boq.skirting, b.total.skirting, T.boq.m],
+    ].map(([k, v, u]) => `<span>${k}: <b>${fmt(v as number, 0)} ${u}</b></span>`).join('');
+    qSay(plan.rooms.length ? '' : T.quote.noRooms);
+    $<HTMLButtonElement>('sd-quote-send').disabled = !plan.rooms.length;
+    $('sd-quote-send').hidden = false;
+    $<HTMLDialogElement>('sd-quote-dlg').showModal();
+  });
+  qForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!plan || !plan.rooms.length) return;
+    const f = new FormData(qForm);
+    const val = (k: string) => String(f.get(k) || '').trim();
+    if (!val('name') || val('phone').replace(/\D/g, '').length < 7) { qSay(T.quote.invalid); return; }
+    const b = computeBoq(plan);
+    const send = $<HTMLButtonElement>('sd-quote-send');
+    send.disabled = true; send.textContent = T.quote.sending;
+    try {
+      const res = await fetch(cfg.finishing, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: val('name'), phone: val('phone'), email: val('email'), city: val('city'), level: val('level'), notes: val('notes'), lang: cfg.lang,
+          file: fileName, area: b.total.area,
+          boq: { floor: b.total.floor, paint: b.total.paint, tiles: b.total.tiles, ceiling: b.total.ceiling, skirting: b.total.skirting },
+          rooms: plan.rooms.map((r) => ({ name: r.name, type: r.type, area: r.area })),
+        }),
+      });
+      const r = await res.json() as { success?: boolean; id?: number | string; reason?: string };
+      if (r.success) { qSay(T.quote.ok(String(r.id ?? '')), true); qForm.reset(); send.hidden = true; }
+      else qSay(r.reason === 'limit' ? T.quote.limit : r.reason === 'invalid' ? T.quote.invalid : T.quote.fail);
+    } catch {
+      qSay(T.quote.fail);
+    }
+    send.disabled = false; send.textContent = T.quote.send;
+  });
 
   // walk pad (hold to move)
   let turnTimer = 0;
