@@ -46,9 +46,10 @@ const checkRequest = node({
       language: 'javaScript',
       jsCode: `// Validates the photo, decides between a free render and a paid one, and writes the prompt.
 // Free: 1 per visitor and 2 per IP address per day, 60 per day for the whole site (workflow static data).
-// Cost: gpt-image-1-mini, medium quality, about $0.015 per render.
+// Cost: free renders use gpt-image-1-mini (medium, low fidelity, about $0.015).
+// Paid renders use gpt-image-1 with high input fidelity so the room stays the same (about $0.09).
 const FREE_PER_VISITOR = 1, FREE_PER_IP = 2, FREE_PER_DAY = 60;
-const MODEL = 'gpt-image-1-mini', QUALITY = 'medium', FIDELITY = 'high';
+const FREE_MODEL = 'gpt-image-1-mini', PAID_MODEL = 'gpt-image-1', QUALITY = 'medium';
 const req = $input.first().json;
 let b = req.body;
 if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }
@@ -71,8 +72,8 @@ const rooms = { living: 'living room', bedroom: 'bedroom', majlis: 'majlis (Arab
 const style = styles[b.style] ? b.style : 'modern';
 const room = rooms[b.room] ? b.room : 'living';
 const test = $execution.mode !== 'production';
-const base = { session_id: sid, wallet, style, room, lang, day, ip, model: test && b.model ? String(b.model) : MODEL, quality: QUALITY, fidelity: test && b.fidelity ? String(b.fidelity) : FIDELITY };
-if (!sid || sid.length < 6 || !m || m[2].length > 3000000) return [{ json: Object.assign(base, { mode: 'none', reason: 'invalid', free_left: 0 }) }];
+const base = { session_id: sid, wallet, style, room, lang, day, ip, quality: QUALITY };
+if (!sid || sid.length < 6 || !m || m[2].length > 3000000) return [{ json: Object.assign(base, { model: FREE_MODEL, fidelity: 'low', mode: 'none', reason: 'invalid', free_left: 0 }) }];
 const st = $getWorkflowStaticData('global');
 if (!st.free || st.free.day !== day) st.free = { day, total: 0, by: {}, ip: {} };
 const f = st.free;
@@ -82,6 +83,11 @@ let mode = canFree ? 'free' : (wallet ? 'paid' : 'none');
 if (mode === 'free') { f.by[sid] = usedV + 1; f.ip[ip] = usedI + 1; f.total += 1; }
 const freeLeft = Math.max(0, Math.min(FREE_PER_VISITOR - (f.by[sid] || 0), FREE_PER_IP - (f.ip[ip] || 0), FREE_PER_DAY - f.total));
 const prompt = 'Redesign this photo of a real ' + rooms[room] + ' as a professionally designed interior. Keep exactly the same room: the same walls, windows, doors, ceiling height, floor area, camera position and perspective. Only change finishes, furniture, lighting and decor. Style: ' + styles[style] + '. Photorealistic high-end interior photography, natural daylight, realistic materials and proportions. No people, no text, no watermark.';
+let model = mode === 'paid' ? PAID_MODEL : FREE_MODEL;
+if (test && b.model) model = String(b.model);
+let fidelity = model === 'gpt-image-1-mini' ? 'low' : 'high';
+if (test && b.fidelity) fidelity = String(b.fidelity);
+Object.assign(base, { model, fidelity });
 return [{ json: Object.assign(base, { mode, reason: mode === 'none' ? 'credits' : '', free_left: freeLeft, prompt }), binary: { image: { data: m[2], mimeType: 'image/' + m[1], fileName: 'room.' + (m[1] === 'jpeg' ? 'jpg' : m[1]), fileExtension: m[1] === 'jpeg' ? 'jpg' : m[1] } } }];
 `
     }
