@@ -1,0 +1,211 @@
+---
+// Room photo redesign. Logic in src/scripts/redesign.ts, backend: n8n workflow "Oxira Design — Room redesign".
+import { N8N, CONTACT, type Lang } from '../i18n/content';
+import { st } from '../i18n/studio';
+import { rd, REDESIGN_PACKS, ROOM_IDS } from '../i18n/redesign';
+import { link } from '../lib/routes';
+import Icon from './Icon.astro';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const r = rd[lang];
+const styles = st[lang].style.names;
+const fmt = (n: number) => (Math.round(n * 100) / 100).toLocaleString(lang === 'ar' ? 'ar-SA' : lang, { maximumFractionDigits: 2 });
+const cfg = {
+  lang,
+  render: N8N.redesignRender,
+  wallet: N8N.redesignWallet,
+  buy: N8N.redesignBuy,
+  whatsapp: CONTACT.whatsapp,
+  t: {
+    credits: r.credits(7).replace('7', '{n}'),
+    freeOne: r.free.one,
+    freeNone: r.free.none,
+    working: r.working,
+    err: r.err,
+    bought: r.bought,
+    pending: r.pending,
+    cancel: r.cancel,
+    copied: r.restore.copied,
+    copy: r.restore.copy,
+    unavailable: r.buy.unavailable,
+    packs: Object.fromEntries(REDESIGN_PACKS.map((p) => [p.id, `${r.buy.renders(p.renders)} · ${p.price} ${r.buy.sar}`])),
+  },
+};
+---
+<section class="page-hero rd-hero">
+  <div class="wrap">
+    <p class="label">{r.kicker}</p>
+    <h1>{r.h1}</h1>
+    <p class="lead">{r.lead}</p>
+    <ol class="rd-steps">{r.steps.map((s, i) => <li><b>{i + 1}</b>{s}</li>)}</ol>
+  </div>
+</section>
+
+<section class="section-tight rd" id="rd" data-cfg={JSON.stringify(cfg)}>
+  <div class="wrap rd-grid">
+    <div class="rd-form">
+      <div class="rd-notice" id="rd-notice" role="status" hidden></div>
+
+      <h2>{r.upload.title}</h2>
+      <label class="rd-drop" id="rd-drop">
+        <input type="file" id="rd-file" accept="image/jpeg,image/png,image/webp" />
+        <Icon name="upload" />
+        <b>{r.upload.drop}</b>
+        <span class="btn btn-navy">{r.upload.choose}</span>
+        <small>{r.upload.hint}</small>
+      </label>
+
+      <h2>{r.room.title}</h2>
+      <div class="rd-chips" id="rd-rooms">
+        {ROOM_IDS.map((k, i) => <button type="button" data-room={k} aria-pressed={i === 0 ? 'true' : 'false'}>{r.room.names[k]}</button>)}
+      </div>
+
+      <h2>{r.styleTitle}</h2>
+      <div class="rd-chips" id="rd-styles">
+        {Object.entries(styles).map(([k, v], i) => <button type="button" data-style={k} aria-pressed={i === 0 ? 'true' : 'false'}><i class={`sw sw-${k}`}></i>{v}</button>)}
+      </div>
+
+      <button type="button" class="btn btn-amber rd-go" id="rd-go" disabled><Icon name="spark" />{r.btn}</button>
+      <p class="rd-quota" id="rd-quota"></p>
+      <p class="rd-small"><Icon name="check" />{r.privacy}</p>
+    </div>
+
+    <div class="rd-stage">
+      <div class="rd-compare" id="rd-compare" data-state="empty">
+        <img id="rd-before" alt={r.before} />
+        <div class="rd-after-wrap" id="rd-after-wrap"><img id="rd-after" alt={r.after} /></div>
+        <input type="range" id="rd-slider" min="0" max="100" value="50" aria-label={`${r.before} / ${r.after}`} />
+        <span class="rd-tag rd-tag-b">{r.before}</span>
+        <span class="rd-tag rd-tag-a">{r.after}</span>
+        <div class="rd-empty"><Icon name="sofa" /><p>{r.upload.drop}</p></div>
+        <div class="rd-busy"><span class="rd-spin"></span><p>{r.working}</p></div>
+      </div>
+      <div class="rd-actions" id="rd-actions" hidden>
+        <a class="btn btn-navy" id="rd-download" download="oxira-room.jpg"><Icon name="file" />{r.download}</a>
+        <button type="button" class="btn btn-ghost" id="rd-again">{r.again}</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-tight bg-paper rd-buy" id="packs">
+  <div class="wrap">
+    <h2>{r.buy.title}</h2>
+    <p class="rd-sub">{r.buy.sub}</p>
+    <div class="rd-packs">
+      {REDESIGN_PACKS.map((p) => (
+        <article class={`rd-pack${'best' in p && p.best ? ' is-best' : ''}`}>
+          {'best' in p && p.best && <span class="rd-best">{r.buy.best}</span>}
+          <h3>{r.buy.renders(p.renders)}</h3>
+          <p class="rd-price"><b>{p.price}</b> {r.buy.sar} <small>{r.buy.vat}</small></p>
+          <p class="rd-per">{r.buy.per(fmt(p.price / p.renders))}</p>
+          <button type="button" class={`btn ${'best' in p && p.best ? 'btn-amber' : 'btn-navy'}`} data-pack={p.id}>{r.buy.pay}</button>
+        </article>
+      ))}
+    </div>
+    <label class="rd-email"><span>{r.buy.email}</span><input type="email" id="rd-email" autocomplete="email" inputmode="email" /></label>
+    <div class="rd-restore" id="rd-restore" hidden>
+      <b>{r.restore.title}</b>
+      <p>{r.restore.note}</p>
+      <div><input type="text" id="rd-restore-url" readonly /><button type="button" class="btn btn-ghost" id="rd-copy">{r.restore.copy}</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="wrap rd-more">
+    <div><h2>{r.more.title}</h2><p>{r.more.body}</p></div>
+    <a class="btn btn-navy" href={link(lang, '/studio/')}><Icon name="cube" />{r.more.studio}</a>
+  </div>
+</section>
+
+<script>
+  import { initRedesign } from '../scripts/redesign';
+  initRedesign();
+</script>
+
+<style>
+  .rd-hero { padding-bottom: 1.5rem; }
+  .rd-steps { list-style: none; padding: 0; margin: 1.75rem 0 0; display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; color: var(--muted); }
+  .rd-steps li { display: flex; align-items: center; gap: .55rem; }
+  .rd-steps b { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-size: .9rem; }
+
+  .rd-grid { display: grid; grid-template-columns: minmax(0, 24rem) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 3rem); align-items: start; }
+  .rd-form h2 { font-size: 1.05rem; margin: 1.5rem 0 .65rem; }
+  .rd-form h2:first-of-type { margin-top: 0; }
+  .rd-drop { display: grid; justify-items: center; gap: .6rem; text-align: center; padding: 1.5rem 1rem; border: 2px dashed var(--line); border-radius: var(--radius); cursor: pointer; background: var(--paper); transition: border-color .15s; }
+  .rd-drop:hover, .rd-drop.is-over { border-color: var(--blue); }
+  .rd-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .rd-drop :global(.ic) { width: 2rem; height: 2rem; color: var(--blue); }
+  .rd-drop small { color: var(--muted); font-size: .85rem; }
+  .rd-chips { display: flex; flex-wrap: wrap; gap: .45rem; }
+  .rd-chips button { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .85rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--ink); font: inherit; font-size: .95rem; cursor: pointer; }
+  .rd-chips button[aria-pressed='true'] { border-color: var(--navy); background: var(--navy); color: #fff; }
+  .rd-chips .sw { width: .9rem; height: .9rem; border-radius: 50%; display: inline-block; }
+  .sw-modern { background: linear-gradient(135deg, #f4f1ea 50%, #b48a5a 50%); }
+  .sw-classic { background: linear-gradient(135deg, #efe4cf 50%, #7a2e2e 50%); }
+  .sw-najdi { background: linear-gradient(135deg, #d9b98c 50%, #9b3b25 50%); }
+  .sw-scandi { background: linear-gradient(135deg, #ffffff 50%, #c9c2b4 50%); border: 1px solid var(--line); }
+  .sw-luxury { background: linear-gradient(135deg, #2f3b3a 50%, #c9a24a 50%); }
+  .rd-go { width: 100%; margin-top: 1.5rem; }
+  .rd-go[disabled] { opacity: .55; cursor: not-allowed; }
+  .rd-quota { margin-top: .6rem; font-weight: 600; color: var(--navy); min-height: 1.4em; }
+  .rd-small { display: flex; gap: .45rem; align-items: flex-start; margin-top: .5rem; color: var(--muted); font-size: .85rem; }
+  .rd-small :global(.ic) { flex: none; width: 1rem; height: 1rem; margin-top: .2rem; color: var(--blue); }
+  .rd-notice { padding: .85rem 1rem; border-radius: 12px; margin-bottom: 1.25rem; background: var(--blue-soft); color: var(--navy); font-weight: 600; }
+  .rd-notice.is-err { background: #fdecea; color: #8a1f12; }
+  .rd-notice a { color: inherit; }
+
+  .rd-stage { position: sticky; top: 6rem; }
+  .rd-compare { position: relative; aspect-ratio: 3 / 2; border-radius: var(--radius-lg); overflow: hidden; background: var(--paper); border: 1px solid var(--line); }
+  .rd-compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .rd-after-wrap { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--cut, 50%)); }
+  :global([dir='rtl']) .rd-after-wrap { clip-path: inset(0 var(--cut, 50%) 0 0); }
+  .rd-compare input[type='range'] { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+  .rd-compare::after { content: ''; position: absolute; top: 0; bottom: 0; inset-inline-start: var(--cut, 50%); width: 3px; margin-inline-start: -1.5px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.15); pointer-events: none; }
+  .rd-tag { position: absolute; top: .75rem; padding: .25rem .65rem; border-radius: 999px; background: rgba(10,37,62,.75); color: #fff; font-size: .8rem; font-weight: 700; pointer-events: none; }
+  .rd-tag-b { inset-inline-start: .75rem; }
+  .rd-tag-a { inset-inline-end: .75rem; background: var(--amber); color: var(--navy); }
+  .rd-empty, .rd-busy { position: absolute; inset: 0; display: none; place-content: center; justify-items: center; gap: .75rem; text-align: center; padding: 1.5rem; color: var(--muted); }
+  .rd-empty :global(.ic) { width: 3rem; height: 3rem; color: var(--blue); }
+  .rd-busy { background: rgba(255,255,255,.72); color: var(--navy); font-weight: 600; }
+  .rd-spin { width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 3px solid var(--blue-soft); border-top-color: var(--blue); animation: rd-spin 1s linear infinite; }
+  @keyframes rd-spin { to { transform: rotate(360deg); } }
+  .rd-compare[data-state='empty'] .rd-empty { display: grid; }
+  .rd-compare[data-state='busy'] .rd-busy { display: grid; }
+  .rd-compare:not([data-state='done']) .rd-after-wrap,
+  .rd-compare:not([data-state='done']) input[type='range'],
+  .rd-compare:not([data-state='done']) .rd-tag,
+  .rd-compare:not([data-state='done'])::after { display: none; }
+  .rd-compare[data-state='empty'] #rd-before { display: none; }
+  .rd-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+
+  .rd-buy h2 { font-size: var(--s3); }
+  .rd-sub { color: var(--muted); margin-top: .5rem; max-width: 44rem; }
+  .rd-packs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+  .rd-pack { position: relative; display: grid; gap: .4rem; padding: 1.5rem; border-radius: var(--radius); background: #fff; border: 1px solid var(--line); }
+  .rd-pack.is-best { border: 2px solid var(--amber); }
+  .rd-best { position: absolute; top: -.75rem; inset-inline-start: 1.25rem; padding: .15rem .65rem; border-radius: 999px; background: var(--amber); color: var(--navy); font-size: .8rem; font-weight: 700; }
+  .rd-pack h3 { font-size: 1.15rem; }
+  .rd-price b { font-size: 2.2rem; color: var(--navy); }
+  .rd-price small { color: var(--muted); }
+  .rd-per { color: var(--muted); font-size: .9rem; margin-bottom: .5rem; }
+  .rd-email { display: grid; gap: .4rem; max-width: 28rem; margin-top: 1.5rem; font-size: .95rem; color: var(--muted); }
+  .rd-email input, .rd-restore input { font: inherit; padding: .7rem .9rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); min-width: 0; }
+  .rd-restore { margin-top: 1.5rem; padding: 1.25rem; border-radius: var(--radius); background: #fff; border: 1px solid var(--line); max-width: 40rem; }
+  .rd-restore p { color: var(--muted); font-size: .9rem; margin: .25rem 0 .75rem; }
+  .rd-restore div { display: flex; gap: .5rem; }
+  .rd-restore input { flex: 1; direction: ltr; }
+
+  .rd-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; padding: clamp(1.5rem, 4vw, 2.5rem); border-radius: var(--radius-lg); background: var(--navy); color: #fff; }
+  .rd-more h2 { font-size: var(--s2); }
+  .rd-more p { color: var(--muted-on-navy); margin-top: .5rem; max-width: 40rem; }
+  .rd-more .btn { background: var(--amber); color: var(--navy); }
+
+  @media (max-width: 860px) {
+    .rd-grid { grid-template-columns: 1fr; }
+    .rd-stage { position: static; }
+    .rd-packs { grid-template-columns: 1fr; }
+  }
+</style>

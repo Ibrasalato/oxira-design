@@ -11,6 +11,7 @@ const home = link(lang, '/');
 const year = new Date().getFullYear();
 const mainUrl = CONTACT.main + (lang === 'ar' ? '/' : `/${lang}/`);
 const eventsUrl = 'https://events.oxira.sa' + (lang === 'ar' ? '/' : `/${lang}/`);
+import { rd } from '../i18n/redesign';
 ---
 <footer class="ft bg-navy">
   <div class="wrap ft-grid">
@@ -23,6 +24,7 @@ const eventsUrl = 'https://events.oxira.sa' + (lang === 'ar' ? '/' : `/${lang}/`
       <h2>{c.footer.product}</h2>
       <ul>
         <li><a href={link(lang, '/studio/')}>{c.nav.studio}</a></li>
+        <li><a href={link(lang, '/redesign/')}>{rd[lang].nav}</a></li>
         <li><a href={`${home}#packages`}>{c.nav.packages}</a></li>
         <li><a href={`${home}#developers`}>{c.nav.developers}</a></li>
         <li><a href={`${home}#faq`}>{c.nav.faq}</a></li>

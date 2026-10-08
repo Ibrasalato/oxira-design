@@ -1,0 +1,11 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Redesign from '../../../components/Redesign.astro';
+import { languages, type Lang } from '../../../i18n/content';
+import { rd } from '../../../i18n/redesign';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar').map((l) => ({ params: { lang: l.code } }));
+}
+const lang = Astro.params.lang as Lang;
+---
+<Base lang={lang} path="/redesign/" title={`${rd[lang].title} | Oxira Design`} description={rd[lang].meta}><Redesign lang={lang} /></Base>
