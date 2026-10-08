@@ -262,7 +262,7 @@ export class Viewer {
   frame() {
     const s = this.span;
     // keep the whole plan in frame on narrow (portrait) viewports too
-    const fit = 1 / Math.min(1, Math.max(0.45, this.camera.aspect)) ** 0.75;
+    const fit = 1.1 / Math.min(1, Math.max(0.45, this.camera.aspect)) ** 0.75;
     if (this.view === 'top') {
       this.camera.position.set(0, s * 1.55 * fit, s * 0.02);
       this.controls.target.set(0, 0, 0);

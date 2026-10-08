@@ -251,7 +251,10 @@ export function startStudio(root: HTMLElement) {
     out.innerHTML = `<div><div class="sd-busy" style="position:static;background:none"><i></i><span>${T.render.working}</span></div></div>`;
     dlg.showModal();
     try {
+      const labels = viewer.showLabels;
+      viewer.setLabels(false);
       const image = viewer.snapshot('image/jpeg', 0.85, 1024);
+      viewer.setLabels(labels);
       const room = plan.rooms.slice().sort((a, b) => b.area - a.area)[0];
       const res = await fetch(cfg.render, {
         method: 'POST',
