@@ -1,3 +1,4 @@
+// Note: since 2026-10-08 the live n8n workflow (Oxira Design, eAQ61Sp6xzWCZxju) is the source of truth. It adds a chat quota, renders through gpt-image-1-mini (direct OpenAI call) and IP/daily render caps that are not in this file.
 import { workflow, node, trigger, sticky, languageModel, memory, tool, ifElse, fromAi, expr } from '@n8n/workflow-sdk';
 
 const ORIGINS = 'https://design.oxira.sa,https://ibrasalato.github.io,http://localhost:4321';

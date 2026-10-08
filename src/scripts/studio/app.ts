@@ -242,6 +242,20 @@ export function startStudio(root: HTMLElement) {
   let remaining: number | null = null;
   const renderQuota = () => { $('sd-render-left').textContent = remaining === null ? '' : `${T.render.left}: ${remaining}`; };
 
+  // Same view + style already rendered in this visit: show it again instead of spending another render.
+  const renderCache = new Map<string, string>();
+  const hash = (t: string) => { let h = 2166136261; for (let i = 0; i < t.length; i += 7) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return (h >>> 0).toString(36) + t.length; };
+  const showRender = (src: string) => {
+    const out = $('sd-render-out');
+    const dl = $('sd-render-dl') as HTMLAnchorElement;
+    out.innerHTML = '';
+    const img = new Image();
+    img.alt = T.render.title;
+    img.src = src;
+    out.appendChild(img);
+    dl.href = src; dl.hidden = false;
+  };
+
   async function aiRender() {
     if (!viewer || !plan) return;
     const dlg = $('sd-render-dlg') as HTMLDialogElement;
@@ -255,6 +269,9 @@ export function startStudio(root: HTMLElement) {
       viewer.setLabels(false);
       const image = viewer.snapshot('image/jpeg', 0.85, 1024);
       viewer.setLabels(labels);
+      const key = `${style}|${viewer.view}|${hash(image)}`;
+      const cached = renderCache.get(key);
+      if (cached) { showRender(cached); return; }
       const room = plan.rooms.slice().sort((a, b) => b.area - a.area)[0];
       const res = await fetch(cfg.render, {
         method: 'POST',
@@ -265,13 +282,9 @@ export function startStudio(root: HTMLElement) {
       if (typeof j.remaining === 'number') { remaining = j.remaining; renderQuota(); }
       if (j.reason === 'limit') { out.innerHTML = `<p>${T.render.limit}</p>`; return; }
       if (!j.success || !j.image) throw new Error(j.reason || 'failed');
-      const src = String(j.image).startsWith('data:') || String(j.image).startsWith('http') ? j.image : `data:image/png;base64,${j.image}`;
-      out.innerHTML = '';
-      const img = new Image();
-      img.alt = T.render.title;
-      img.src = src;
-      out.appendChild(img);
-      dl.href = src; dl.hidden = false;
+      const src = String(j.image).startsWith('data:') || String(j.image).startsWith('http') ? j.image : `data:image/jpeg;base64,${j.image}`;
+      renderCache.set(key, src);
+      showRender(src);
     } catch (e) {
       console.warn(e);
       out.innerHTML = `<p>${T.render.fail}</p>`;
