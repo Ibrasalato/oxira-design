@@ -22,6 +22,8 @@ export const N8N = {
   redesignWallet: HOOK + 'oxira-redesign-wallet',
   redesignBuy: HOOK + 'oxira-redesign-buy',
   finishing: HOOK + 'oxira-design-finishing',
+  listing: HOOK + 'oxira-design-listing',
+  listingGet: HOOK + 'oxira-design-listing-get',
 };
 
 export const CONTACT = {

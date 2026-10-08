@@ -2,12 +2,13 @@
 import { readDxf, rescale, type Flat, type Role } from './dxf.ts';
 import { buildPlan, type Plan, type RoomType } from './plan.ts';
 import { computeBoq, boqCsv } from './boq.ts';
+import { planToJson } from './share.ts';
 import type { Viewer, View } from './viewer.ts';
 import type { StyleId } from './styles.ts';
 import { st } from '../../i18n/studio';
 import type { Lang } from '../../i18n/content';
 
-type Cfg = { lang: Lang; render: string; finishing: string; samples: Record<string, string>; whatsapp: string };
+type Cfg = { lang: Lang; render: string; finishing: string; listing: string; tour: string; samples: Record<string, string>; whatsapp: string };
 
 export function startStudio(root: HTMLElement) {
   const cfg: Cfg = JSON.parse(root.dataset.cfg!);
@@ -370,6 +371,52 @@ export function startStudio(root: HTMLElement) {
     save(new Blob([boqCsv(computeBoq(plan), head, (k) => T.types[k as RoomType] || k)], { type: 'text/csv' }), base() + '-quantities.csv');
   });
   $('sd-render').addEventListener('click', aiRender);
+
+  // 3D listing tours: the plan goes to the n8n workflow "Oxira Design — Listing tours" (draft → paid → live)
+  const lForm = $<HTMLFormElement>('sd-listing-form');
+  const lMsg = $('sd-listing-msg');
+  const lSay = (txt: string, ok = false) => { lMsg.hidden = !txt; lMsg.textContent = txt; lMsg.classList.toggle('is-ok', ok); };
+  document.addEventListener('click', (ev) => {
+    if (!(ev.target as HTMLElement).closest('[data-sd-listing]') || !plan) return;
+    lSay(plan.rooms.length ? '' : T.listing.plan);
+    $('sd-listing-done').hidden = true;
+    $('sd-listing-send').hidden = false;
+    $<HTMLButtonElement>('sd-listing-send').disabled = !plan.rooms.length;
+    $<HTMLDialogElement>('sd-listing-dlg').showModal();
+  });
+  lForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!plan || !plan.rooms.length) return;
+    const f = new FormData(lForm);
+    const val = (k: string) => String(f.get(k) || '').trim();
+    if (!val('title') || val('phone').replace(/\D/g, '').length < 7) { lSay(T.listing.invalid); return; }
+    const send = $<HTMLButtonElement>('sd-listing-send');
+    send.disabled = true; send.textContent = T.listing.sending;
+    try {
+      const res = await fetch(cfg.listing, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: val('title'), city: val('city'), district: val('district'), price: val('price'), phone: val('phone'), email: val('email'), lang: cfg.lang, style, plan: planToJson(plan) }),
+      });
+      const r = await res.json() as { success?: boolean; id?: string; payUrl?: string | null; reason?: string };
+      if (r.success && r.id) {
+        const url = `${location.origin}${cfg.tour}?id=${r.id}`;
+        $<HTMLAnchorElement>('sd-listing-preview').href = url;
+        const pay = $<HTMLAnchorElement>('sd-listing-pay');
+        if (r.payUrl) { pay.href = r.payUrl; pay.textContent = T.listing.pay; lSay(T.listing.done, true); }
+        else {
+          pay.href = `${cfg.whatsapp}?text=${encodeURIComponent(`${T.listing.title}: ${url}`)}`;
+          pay.target = '_blank';
+          pay.textContent = T.listing.whatsapp;
+          lSay(`${T.listing.done} ${T.listing.payDown}`, true);
+        }
+        $('sd-listing-done').hidden = false;
+        send.hidden = true;
+      } else lSay(r.reason === 'limit' ? T.listing.limit : r.reason === 'plan' ? T.listing.plan : r.reason === 'invalid' ? T.listing.invalid : T.listing.fail);
+    } catch {
+      lSay(T.listing.fail);
+    }
+    send.disabled = false; send.textContent = T.listing.send;
+  });
 
   // finishing quotes: the plan quantities + contact go to the n8n workflow "Oxira Design — Finishing quotes"
   const qForm = $<HTMLFormElement>('sd-quote-form');

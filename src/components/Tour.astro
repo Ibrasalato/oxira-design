@@ -1,0 +1,142 @@
+---
+// Shared 3D listing tour (design.oxira.sa/tour/?id=…). Data from the n8n workflow "Oxira Design — Listing tours".
+import { N8N, type Lang } from '../i18n/content';
+import { st } from '../i18n/studio';
+import { tr } from '../i18n/tour';
+import { link } from '../lib/routes';
+import Icon from './Icon.astro';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = tr[lang];
+const s = st[lang];
+const cfg = {
+  lang,
+  get: N8N.listingGet,
+  types: s.types,
+  t: { notFound: t.notFound, draft: t.draft, checking: t.checking, onRequest: t.onRequest, sar: t.sar, m2: t.m2, copied: t.copied, share: t.share, contactMsg: t.contactMsg('{t}') },
+};
+---
+<section class="tr" id="tr" data-cfg={JSON.stringify(cfg)}>
+  <div class="wrap">
+    <p class="tr-banner" id="tr-banner" hidden></p>
+    <div class="tr-grid">
+      <div class="tr-stage">
+        <div class="tr-view" id="tr-view">
+          <div class="tr-msg" id="tr-msg"><span class="tr-spin"></span><p>{t.loading}</p></div>
+        </div>
+        <div class="tr-tools" id="tr-tools" hidden>
+          <div class="tr-seg" role="group">
+            <button type="button" data-view="orbit" aria-pressed="true">{s.view.orbit}</button>
+            <button type="button" data-view="top" aria-pressed="false">{s.view.top}</button>
+            <button type="button" data-view="walk" aria-pressed="false">{s.view.walk}</button>
+          </div>
+          <button type="button" class="tr-full" id="tr-full" aria-label={s.view.fullscreen} title={s.view.fullscreen}><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg></button>
+        </div>
+        <div class="tr-walk" id="tr-walk" hidden>
+          <p>{s.view.walkHint}</p>
+          <div class="tr-pad" dir="ltr">
+            <button type="button" data-move="tl" aria-label={s.view.left}>⟲</button>
+            <button type="button" data-move="f" aria-label={s.view.fwd}>▲</button>
+            <button type="button" data-move="tr" aria-label={s.view.right}>⟳</button>
+            <button type="button" data-move="l" aria-label={s.view.left}>◀</button>
+            <button type="button" data-move="b" aria-label={s.view.backward}>▼</button>
+            <button type="button" data-move="r" aria-label={s.view.right}>▶</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="tr-info" id="tr-info" hidden>
+        <h1 id="tr-title"></h1>
+        <p class="tr-loc" id="tr-loc"></p>
+        <dl class="tr-facts">
+          <div><dt>{t.price}</dt><dd id="tr-price"></dd></div>
+          <div><dt>{t.area}</dt><dd id="tr-area"></dd></div>
+          <div><dt>{t.bedrooms}</dt><dd id="tr-beds"></dd></div>
+          <div><dt>{t.baths}</dt><dd id="tr-baths"></dd></div>
+        </dl>
+        <a class="btn btn-amber tr-wide" id="tr-contact" target="_blank" rel="noopener" hidden><Icon name="people" />{t.contact}</a>
+        <button type="button" class="btn btn-ghost tr-wide" id="tr-share"><Icon name="megaphone" />{t.share}</button>
+        <details class="tr-box" id="tr-ad-box" hidden>
+          <summary>{t.ad}</summary>
+          <h2 id="tr-ad-h"></h2>
+          <p id="tr-ad-b"></p>
+          <p class="tr-tags" id="tr-ad-tags"></p>
+          <button type="button" class="tr-link" id="tr-ad-copy">{t.copyAd}</button>
+        </details>
+        <details class="tr-box">
+          <summary>{t.rooms}</summary>
+          <ul class="tr-rooms" id="tr-rooms"></ul>
+        </details>
+        <details class="tr-box">
+          <summary>{t.qr}</summary>
+          <img id="tr-qr" alt="QR" width="180" height="180" loading="lazy" />
+        </details>
+      </aside>
+    </div>
+
+    <div class="tr-made">
+      <p>{t.made}</p>
+      <a class="btn btn-navy" href={link(lang, '/studio/')}><Icon name="cube" />{t.try}</a>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { initTour } from '../scripts/tour';
+  initTour();
+</script>
+
+<style>
+  .tr { padding-block: 1.5rem 4rem; }
+  .tr-banner { margin-bottom: 1rem; padding: .8rem 1rem; border-radius: 12px; background: #FFF6E0; color: #6B4A00; font-weight: 600; }
+  .tr-grid { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: 1.5rem; align-items: start; }
+  .tr-stage { position: relative; }
+  .tr-view { position: relative; height: min(72vh, 640px); min-height: 360px; border-radius: var(--radius-lg); overflow: hidden; background: linear-gradient(#EEF3F7, #DCE5EC); border: 1px solid var(--line); }
+  .tr-view:fullscreen { border-radius: 0; height: 100%; }
+  .tr-msg { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: .75rem; text-align: center; color: var(--muted); padding: 1rem; }
+  .tr-spin { width: 2.4rem; height: 2.4rem; border-radius: 50%; border: 3px solid var(--blue-soft); border-top-color: var(--blue); animation: tr-spin 1s linear infinite; }
+  .tr-msg.is-err .tr-spin { display: none; }
+  @keyframes tr-spin { to { transform: rotate(360deg); } }
+  .tr-tools { position: absolute; top: .75rem; inset-inline-start: .75rem; display: flex; gap: .5rem; z-index: 2; }
+  .tr-tools[hidden] { display: none; }
+  .tr-seg { display: flex; padding: 3px; border-radius: 12px; background: #fff; box-shadow: 0 6px 20px -10px rgba(6,26,45,.4); }
+  .tr-seg button { font: 600 .85rem/1 var(--font); padding: .55rem .8rem; border: 0; border-radius: 9px; background: none; color: var(--ink); cursor: pointer; }
+  .tr-seg button[aria-pressed='true'] { background: var(--navy); color: #fff; }
+  .tr-full { width: 2.4rem; border: 0; border-radius: 12px; background: #fff; box-shadow: 0 6px 20px -10px rgba(6,26,45,.4); cursor: pointer; display: grid; place-items: center; }
+  .tr-full svg { width: 18px; height: 18px; fill: none; stroke: var(--navy); stroke-width: 2; }
+  .tr-walk { position: absolute; bottom: .75rem; inset-inline-end: .75rem; display: grid; justify-items: center; gap: .4rem; z-index: 2; }
+  .tr-walk[hidden] { display: none; }
+  .tr-walk p { font-size: .78rem; background: rgba(10,37,62,.8); color: #fff; padding: .3rem .6rem; border-radius: 8px; }
+  .tr-pad { display: grid; grid-template-columns: repeat(3, 2.6rem); gap: .3rem; }
+  .tr-pad button { height: 2.6rem; border: 0; border-radius: 10px; background: rgba(255,255,255,.92); font-size: 1rem; cursor: pointer; touch-action: none; user-select: none; }
+
+  .tr-info { display: grid; gap: .85rem; padding: 1.25rem; border-radius: var(--radius); border: 1px solid var(--line); background: #fff; }
+  .tr-info[hidden] { display: none; }
+  .tr-info h1 { font-size: 1.45rem; line-height: 1.35; }
+  .tr-loc { color: var(--muted); }
+  .tr-facts { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin: 0; }
+  .tr-facts div { padding: .65rem .75rem; border-radius: 12px; background: var(--paper); }
+  .tr-facts dt { font-size: .8rem; color: var(--muted); }
+  .tr-facts dd { margin: .15rem 0 0; font-weight: 700; color: var(--navy); }
+  .tr-wide { width: 100%; }
+  .tr-box { border-top: 1px solid var(--line); padding-top: .75rem; }
+  .tr-box summary { cursor: pointer; font-weight: 700; }
+  .tr-box h2 { font-size: 1.05rem; margin: .75rem 0 .4rem; }
+  .tr-box p { color: var(--muted); white-space: pre-line; font-size: .95rem; }
+  .tr-tags { margin-top: .5rem; color: var(--blue) !important; direction: ltr; text-align: start; }
+  .tr-link { margin-top: .5rem; border: 0; background: none; padding: 0; color: #00699A; font: 700 .9rem var(--font); cursor: pointer; text-decoration: underline; }
+  .tr-rooms { list-style: none; padding: 0; margin: .6rem 0 0; display: grid; gap: .35rem; }
+  .tr-rooms li { display: flex; justify-content: space-between; gap: .5rem; font-size: .92rem; }
+  .tr-rooms small { color: var(--muted); }
+  #tr-qr { display: block; margin-top: .75rem; border-radius: 12px; border: 1px solid var(--line); }
+
+  .tr-made { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 2rem; padding: 1.25rem 1.5rem; border-radius: var(--radius); background: var(--navy); color: #fff; }
+  .tr-made p { color: var(--muted-on-navy); max-width: 40rem; }
+  .tr-made .btn { background: var(--amber); color: var(--navy); }
+
+  @media (max-width: 900px) {
+    .tr-grid { grid-template-columns: 1fr; }
+    .tr-view { height: 58vh; }
+  }
+</style>

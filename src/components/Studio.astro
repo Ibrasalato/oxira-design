@@ -2,7 +2,7 @@
 // The DXF → 3D studio app. Logic in src/scripts/studio/app.ts.
 import { t, N8N, CONTACT, type Lang } from '../i18n/content';
 import { st } from '../i18n/studio';
-import { asset } from '../lib/routes';
+import { asset, link } from '../lib/routes';
 import Icon from './Icon.astro';
 import OrderForm from './OrderForm.astro';
 
@@ -14,6 +14,8 @@ const cfg = {
   lang,
   render: import.meta.env.PUBLIC_RENDER_ENDPOINT || N8N.render,
   finishing: N8N.finishing,
+  listing: N8N.listing,
+  tour: link(lang, '/tour/'),
   samples: { apartment: asset('samples/apartment-3br.dxf'), studio: asset('samples/studio-ar.dxf') },
   whatsapp: CONTACT.whatsapp,
 };
@@ -90,6 +92,8 @@ const cfg = {
           <button type="button" class="btn btn-ghost" data-export="obj">{s.export.obj}</button>
         </div>
         <p class="sd-small">{s.export.note}</p>
+        <button type="button" class="btn btn-amber sd-wide sd-quote-btn" data-sd-listing><Icon name="building" />{s.listing.cta}</button>
+        <p class="sd-small">{s.listing.sub}</p>
       </details>
 
       <details class="sd-sec">
@@ -172,6 +176,29 @@ const cfg = {
   </form>
 </dialog>
 
+<dialog class="sd-dlg" id="sd-listing-dlg">
+  <div class="sd-dlg-head"><h2>{s.listing.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
+  <form class="sd-quote" id="sd-listing-form" novalidate>
+    <p class="sd-small">{s.listing.lead}</p>
+    <label class="sd-field"><span>{s.listing.name}</span><input name="title" required maxlength="100" placeholder={s.listing.namePh} /></label>
+    <div class="sd-row2">
+      <label class="sd-field"><span>{s.listing.city}</span><input name="city" maxlength="60" /></label>
+      <label class="sd-field"><span>{s.listing.district}</span><input name="district" maxlength="60" /></label>
+    </div>
+    <div class="sd-row2">
+      <label class="sd-field"><span>{s.listing.price}</span><input name="price" inputmode="numeric" maxlength="30" dir="ltr" /></label>
+      <label class="sd-field"><span>{s.listing.phone}</span><input name="phone" required type="tel" inputmode="tel" maxlength="30" autocomplete="tel" dir="ltr" /></label>
+    </div>
+    <label class="sd-field"><span>{s.listing.email}</span><input name="email" type="email" maxlength="160" autocomplete="email" dir="ltr" /></label>
+    <p class="sd-quote-msg" id="sd-listing-msg" role="status" hidden></p>
+    <div class="sd-listing-done" id="sd-listing-done" hidden>
+      <a class="btn btn-ghost sd-wide" id="sd-listing-preview" target="_blank" rel="noopener">{s.listing.preview}</a>
+      <a class="btn btn-amber sd-wide" id="sd-listing-pay">{s.listing.pay}</a>
+    </div>
+    <button type="submit" class="btn btn-amber sd-wide" id="sd-listing-send">{s.listing.send}</button>
+  </form>
+</dialog>
+
 <dialog class="sd-dlg sd-dlg-img" id="sd-render-dlg">
   <div class="sd-dlg-head"><h2>{s.render.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
   <div class="sd-render-out" id="sd-render-out"></div>
@@ -221,7 +248,9 @@ const cfg = {
   .sd-samples button, .sd-styles button { font: 600 .85rem/1.2 var(--font); padding: .5rem .75rem; border-radius: 10px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
   .sd-samples button:hover, .sd-styles button:hover { border-color: var(--blue); }
   .sd-quote-btn { margin-top: .9rem; }
-  #sd-quote-dlg { width: min(520px, calc(100vw - 24px)); }
+  .sd-listing-done { display: grid; gap: .6rem; }
+  .sd-listing-done[hidden] { display: none; }
+  #sd-listing-dlg, #sd-quote-dlg { width: min(520px, calc(100vw - 24px)); }
   .sd-quote { display: grid; gap: .75rem; padding: 1rem 1.25rem 1.25rem; }
   .sd-quote .sd-field input, .sd-quote .sd-field select, .sd-quote textarea { width: 100%; font: inherit; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
   .sd-quote-sum { display: flex; flex-wrap: wrap; gap: .35rem .9rem; padding: .7rem .85rem; border-radius: 12px; background: var(--blue-soft); font-size: .85rem; color: var(--navy); }
