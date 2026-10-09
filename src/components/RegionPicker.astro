@@ -1,0 +1,26 @@
+---
+// Country / currency picker. The choice is stored in the browser and drives local price display
+// ([data-sar] elements), units and the plan designer's defaults. Logic: src/scripts/regionUi.ts.
+import type { Lang } from '../i18n/content';
+import { REGIONS, regionName } from '../lib/region';
+import { rg } from '../i18n/region';
+
+interface Props { lang: Lang; tone?: 'light' | 'dark' }
+const { lang, tone = 'dark' } = Astro.props;
+const opts = REGIONS.map((r) => ({ id: r.id, name: regionName(r.id, lang), currency: r.currency }))
+  .sort((a, b) => (a.id === 'XX' ? 1 : b.id === 'XX' ? -1 : a.name.localeCompare(b.name, lang)));
+---
+<label class={`rp rp-${tone}`}>
+  <span>{rg[lang].country}</span>
+  <select data-region-select>
+    {opts.map((o) => <option value={o.id}>{o.name} · {o.currency}</option>)}
+  </select>
+</label>
+
+<style>
+  .rp { display: grid; gap: .35rem; max-width: 18rem; margin-top: 1rem; font-size: .88rem; font-weight: 600; }
+  .rp-dark span { color: var(--muted-on-navy); }
+  .rp select { font: 500 .95rem var(--font); padding: .5rem .7rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.25); background: transparent; color: #fff; }
+  .rp select option { color: #0A253E; }
+  .rp-light select { border-color: var(--line); color: var(--ink); background: #fff; }
+</style>

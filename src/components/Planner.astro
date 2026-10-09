@@ -8,6 +8,8 @@ import { pl, PLAN_TYPES, FORMATS, FACADES, BTYPES, STATES } from '../i18n/planne
 import { link } from '../lib/routes';
 import { KINDS, defaultBrief, frontSetback } from '../scripts/planner/model';
 import Icon from './Icon.astro';
+import RegionPicker from './RegionPicker.astro';
+import { rg } from '../i18n/region';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
@@ -21,8 +23,8 @@ const villaNums = [
   num('villa.floors', p.villa.floors, d.villa.floors, 1, 4), num('villa.bedrooms', p.villa.bedrooms, d.villa.bedrooms, 0, 10),
   num('villa.masters', p.villa.masters, d.villa.masters, 0, 4), num('villa.baths', p.villa.baths, d.villa.baths, 0, 4),
 ];
-const villaChecks = ['roof', 'ensuiteAll', 'majlis', 'ladies', 'dining', 'maid', 'driver', 'laundry', 'store', 'office', 'guestBed', 'prayer', 'lift'] as const;
-const istirahaHide = new Set(['villa.floors', 'villa.masters', 'villa.baths', 'roof', 'ensuiteAll', 'maid', 'laundry', 'office', 'guestBed', 'prayer', 'lift', 'majlis']);
+const villaChecks = ['roof', 'ensuiteAll', 'majlis', 'ladies', 'dining', 'garage', 'maid', 'driver', 'laundry', 'store', 'office', 'guestBed', 'prayer', 'lift'] as const;
+const istirahaHide = new Set(['garage', 'villa.floors', 'villa.masters', 'villa.baths', 'roof', 'ensuiteAll', 'maid', 'laundry', 'office', 'guestBed', 'prayer', 'lift', 'majlis']);
 const bldNums = [num('bld.floors', p.bld.floors, d.bld.floors, 1, 20), num('bld.perFloor', p.bld.perFloor, d.bld.perFloor, 1, 4), num('bld.beds', p.bld.beds, d.bld.beds, 1, 5)];
 const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
 ---
@@ -52,17 +54,26 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
       <form class="pl-panel" id="pl-brief" autocomplete="off" onsubmit="return false">
         <fieldset class="pl-sec">
           <legend><b>1</b>{p.land.title}</legend>
+          <div class="pl-region">
+            <RegionPicker lang={lang} tone="light" />
+            <div class="pl-f"><span>{rg[lang].units}</span>
+              <div class="pl-seg" role="radiogroup">
+                <label><input type="radio" name="units" value="m" checked /><span>{rg[lang].metric}</span></label>
+                <label><input type="radio" name="units" value="ft" /><span>{rg[lang].imperial}</span></label>
+              </div>
+            </div>
+          </div>
           <div class="pl-row2">
             {landFields.map((f) => (
-              <label class="pl-f"><span>{f.label}</span><span class="pl-unit"><input type="number" name={f.name} value={f.value} min={f.min} max={f.max} step={f.step} inputmode="decimal" dir="ltr" /><i>{f.unit}</i></span></label>
+              <label class="pl-f"><span>{f.label}</span><span class="pl-unit"><input type="number" name={f.name} value={f.value} min={f.min} max={f.max} step={f.step} inputmode="decimal" dir="ltr" /><i class="pl-u">{f.unit}</i></span></label>
             ))}
           </div>
-          <p class="pl-area">{p.land.area}: <b id="pl-area">{d.land.w * d.land.d}</b> {p.m2}</p>
+          <p class="pl-area">{p.land.area}: <b id="pl-area">{d.land.w * d.land.d}</b> <span id="pl-area-u">{p.m2}</span></p>
           <div class="pl-row2">
             <label class="pl-f"><span>{p.land.streets}</span>
               <select name="land.streets">{[1, 2, 3, 4].map((n) => <option value={n} selected={n === d.land.streets}>{n}</option>)}</select>
             </label>
-            <label class="pl-f"><span>{p.land.streetW}</span><span class="pl-unit"><input type="number" name="land.streetW" value={d.land.streetW} min="6" max="80" step="1" inputmode="decimal" dir="ltr" /><i>{p.land.m}</i></span></label>
+            <label class="pl-f"><span>{p.land.streetW}</span><span class="pl-unit"><input type="number" name="land.streetW" value={d.land.streetW} min="6" max="80" step="1" inputmode="decimal" dir="ltr" /><i class="pl-u">{p.land.m}</i></span></label>
           </div>
           <details class="pl-more">
             <summary>{p.land.setbacks}: <span id="pl-sb-sum" dir="ltr">{d.setback.front} · {d.setback.side} · {d.setback.back}</span></summary>
@@ -274,6 +285,15 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
   .pl-f input, .pl-f select, .pl-f textarea { font: 500 1rem/1.35 var(--font); color: var(--ink); border: 1.5px solid var(--line); border-radius: 11px; padding: .6rem .75rem; background: #fff; width: 100%; min-width: 0; }
   .pl-f :is(input, select, textarea):focus-visible { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,125,180,.16); }
   .pl-inline { margin-top: .75rem; max-width: 14rem; }
+  .pl-region { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: .75rem; align-items: end; margin-bottom: .9rem; padding-bottom: .9rem; border-bottom: 1px dashed var(--line); }
+  .pl-region .rp { margin: 0; max-width: none; font-size: .9rem; min-width: 0; }
+  .pl-region .rp select { width: 100%; min-width: 0; }
+  .pl-seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 11px; overflow: hidden; }
+  .pl-seg label { position: relative; cursor: pointer; }
+  .pl-seg input { position: absolute; opacity: 0; }
+  .pl-seg span { display: block; padding: .55rem .8rem; font-weight: 600; font-size: .9rem; }
+  .pl-seg input:checked + span { background: var(--navy); color: #fff; }
+  .pl-seg input:focus-visible + span { box-shadow: inset 0 0 0 2px var(--blue); }
   .pl-unit { position: relative; display: block; }
   .pl-unit i { position: absolute; right: .75rem; top: 50%; transform: translateY(-50%); font-style: normal; color: var(--muted); font-size: .85rem; pointer-events: none; }
   .pl-f .pl-unit input { padding-right: 2.4rem; padding-left: .75rem; }

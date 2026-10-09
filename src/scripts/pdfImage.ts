@@ -19,7 +19,7 @@ export async function pdfToImage(file: Blob, maxSide = 1600): Promise<string> {
     const ctx = c.getContext('2d')!;
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, c.width, c.height);
-    await page.render({ canvasContext: ctx, viewport: vp, canvas: c }).promise;
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
     return c.toDataURL('image/jpeg', 0.86);
   } finally {
     doc.destroy();

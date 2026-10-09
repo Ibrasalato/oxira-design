@@ -9,17 +9,20 @@ const FILL: Record<string, string> = {
 const GROUP: Record<Kind, string> = {
   entrance: 'circ', hall: 'circ', landing: 'core', stair: 'core', lift: 'core', living: 'fam', dining: 'fam', kitchen: 'svc',
   majlis: 'pub', ladies: 'pub', office: 'pub', prayer: 'pub', master: 'bed', bedroom: 'bed', guest: 'bed', dress: 'bed',
-  bath: 'wet', wc: 'wet', laundry: 'wet', maid: 'svc', driver: 'svc', store: 'svc', shop: 'shop', parking: 'out', terrace: 'out', void: 'out',
+  bath: 'wet', wc: 'wet', laundry: 'wet', maid: 'svc', driver: 'svc', store: 'svc', shop: 'shop', parking: 'out', terrace: 'out', void: 'out', garage: 'out',
 };
 export const kindColor = (k: Kind) => FILL[GROUP[k]];
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const f2 = (n: number) => (Math.round(n * 1000) / 1000).toString();
 
-export type SvgOpts = { names: Names; fmt: (n: number, d?: number) => string; m2: string; street: string; rtl?: boolean; site?: boolean; edit?: boolean; selected?: string | null; swapFrom?: string | null };
+export type SvgOpts = { names: Names; fmt: (n: number, d?: number) => string; m2: string; len?: (m: number, d?: number) => string; area?: (m2: number) => string; dims?: (w: number, h: number) => string; street: string; rtl?: boolean; site?: boolean; edit?: boolean; selected?: string | null; swapFrom?: string | null };
 
 export function floorSvg(p: Project, f: Floor, o: SvgOpts): { svg: string; geo: Geometry; view: { x0: number; y1: number } } {
   const geo = geometry(f, f.level === 0);
+  const L = o.len || ((m: number, d = 1) => `${o.fmt(m, d)} m`);
+  const AR = o.area || ((a: number) => `${o.fmt(a)} ${o.m2}`);
+  const DM = o.dims || ((w: number, h: number) => `${o.fmt(w, 2)} × ${o.fmt(h, 2)}`);
   const site = o.site !== false && f.level === 0;
   const pad = 1.6;
   const box: Rect = site ? { ...p.land } : { x0: f.rect.x0 - 0.2, y0: f.rect.y0 - 0.2, x1: f.rect.x1 + 0.2, y1: f.rect.y1 + 0.2 };
@@ -40,8 +43,8 @@ export function floorSvg(p: Project, f: Floor, o: SvgOpts): { svg: string; geo: 
     s.push(`<rect x="${X(p.land.x0 - pad)}" y="${Y(p.land.y0 - 0.25)}" width="${f2(p.land.x1 - p.land.x0 + 2 * pad)}" height="${f2(pad + 0.9)}" fill="#E4E8EC"/>`);
     s.push(text((p.land.x0 + p.land.x1) / 2, p.land.y0 - 0.95, o.street, 0.42, 'fill="#556779" font-weight="600"'));
     // land dimensions
-    s.push(dimH(p.land.x0, p.land.x1, p.land.y1 + 0.7, `${o.fmt(p.land.x1 - p.land.x0)} m`, X, Y));
-    s.push(dimV(p.land.y0, p.land.y1, p.land.x1 + 0.7, `${o.fmt(p.land.y1 - p.land.y0)} m`, X, Y));
+    s.push(dimH(p.land.x0, p.land.x1, p.land.y1 + 0.7, L(p.land.x1 - p.land.x0), X, Y));
+    s.push(dimV(p.land.y0, p.land.y1, p.land.x1 + 0.7, L(p.land.y1 - p.land.y0), X, Y));
   }
 
   // rooms
@@ -85,13 +88,13 @@ export function floorSvg(p: Project, f: Floor, o: SvgOpts): { svg: string; geo: 
     }
     const size = Math.max(0.2, Math.min(0.42, Math.min(w, h) / 5.5, w / Math.max(4, (r.leaf.name || o.names(r.leaf.kind)).length * 0.62)));
     s.push(text(cx, cy + size * 0.55, r.leaf.name || o.names(r.leaf.kind), size, 'fill="#0A253E" font-weight="700" pointer-events="none"'));
-    if (h > 1.4 && w > 1.2) s.push(text(cx, cy - size * 0.75, `${o.fmt(r.area)} ${o.m2}`, size * 0.72, `fill="#556779" pointer-events="none" direction="${o.rtl ? 'rtl' : 'ltr'}"`));
-    if (h > 2.2 && w > 2) s.push(text(cx, cy - size * 1.75, `${o.fmt(n.x1 - n.x0, 2)} × ${o.fmt(n.y1 - n.y0, 2)}`, size * 0.62, 'fill="#8A9AAA" pointer-events="none" direction="ltr"'));
+    if (h > 1.4 && w > 1.2) s.push(text(cx, cy - size * 0.75, AR(r.area), size * 0.72, `fill="#556779" pointer-events="none" direction="${o.rtl ? 'rtl' : 'ltr'}"`));
+    if (h > 2.2 && w > 2) s.push(text(cx, cy - size * 1.75, DM(n.x1 - n.x0, n.y1 - n.y0), size * 0.62, 'fill="#8A9AAA" pointer-events="none" direction="ltr"'));
   }
   // footprint dimensions
   const F = f.rect, e = T_EXT / 2;
-  s.push(dimH(F.x0 - e, F.x1 + e, F.y0 - e - 0.55, `${o.fmt(F.x1 - F.x0 + T_EXT, 2)} m`, X, Y));
-  s.push(dimV(F.y0 - e, F.y1 + e, F.x0 - e - 0.55, `${o.fmt(F.y1 - F.y0 + T_EXT, 2)} m`, X, Y));
+  s.push(dimH(F.x0 - e, F.x1 + e, F.y0 - e - 0.55, L(F.x1 - F.x0 + T_EXT, 2), X, Y));
+  s.push(dimV(F.y0 - e, F.y1 + e, F.x0 - e - 0.55, L(F.y1 - F.y0 + T_EXT, 2), X, Y));
   // editing handles
   if (o.edit) {
     dividers(f).forEach((d, i) => {

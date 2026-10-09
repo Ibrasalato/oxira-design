@@ -55,6 +55,7 @@ const pkgs = ['quick', 'design', 'premium', 'developer'] as const;
 </form>
 
 <script>
+  import { detectRegion, localPrice } from '../lib/region';
   type Attach = { files: { field: string; name: string; blob: Blob }[]; summary?: string; area?: number; style?: string };
   document.querySelectorAll<HTMLFormElement>('form.of').forEach((form) => {
     const d = form.dataset;
@@ -70,7 +71,11 @@ const pkgs = ['quick', 'design', 'premium', 'developer'] as const;
     const msg = form.querySelector<HTMLElement>('.of-msg')!;
     const studioNote = form.querySelector<HTMLElement>('.of-studio')!;
     const fmt = (n: number) => new Intl.NumberFormat(d.lang === 'ar' ? 'ar-SA-u-nu-latn' : d.lang, { maximumFractionDigits: 0 }).format(n);
-    const money = (n: number) => `${fmt(n)} ${T.currency}` + (d.lang !== 'ar' ? ` (≈ $${fmt(n / PR.usd)})` : '');
+    const money = (n: number) => {
+      const r = detectRegion(d.lang!);
+      return `${fmt(n)} ${T.currency}` + (r.currency !== 'SAR' ? ` (≈ ${localPrice(n, r, d.lang!)})` : '');
+    };
+    document.addEventListener('ox-region', () => refresh());
 
     const refresh = () => {
       const p = pkg.value;

@@ -10,7 +10,7 @@ import { buildPlan } from '../src/scripts/studio/plan.ts';
 
 const outDir = process.env.OUT || '/tmp/claude-0/planner-test';
 fs.mkdirSync(outDir, { recursive: true });
-const AR: Record<Kind, string> = { entrance: 'مدخل', hall: 'صالة توزيع', living: 'صالة معيشة', majlis: 'مجلس رجال', ladies: 'مجلس نساء', dining: 'طعام', kitchen: 'مطبخ', master: 'غرفة نوم رئيسية', bedroom: 'غرفة نوم', guest: 'غرفة ضيوف', bath: 'حمام', wc: 'دورة مياه', dress: 'غرفة ملابس', maid: 'غرفة خادمة', driver: 'غرفة سائق', laundry: 'غسيل', store: 'مستودع', office: 'مكتب', prayer: 'مصلى', stair: 'درج', lift: 'مصعد', landing: 'بهو', shop: 'محل', parking: 'مواقف', terrace: 'سطح', void: 'منور' };
+const AR: Record<Kind, string> = { entrance: 'مدخل', hall: 'صالة توزيع', living: 'صالة معيشة', majlis: 'مجلس رجال', ladies: 'مجلس نساء', dining: 'طعام', kitchen: 'مطبخ', master: 'غرفة نوم رئيسية', bedroom: 'غرفة نوم', guest: 'غرفة ضيوف', bath: 'حمام', wc: 'دورة مياه', dress: 'غرفة ملابس', maid: 'غرفة خادمة', driver: 'غرفة سائق', laundry: 'غسيل', store: 'مستودع', office: 'مكتب', prayer: 'مصلى', stair: 'درج', lift: 'مصعد', landing: 'بهو', shop: 'محل', parking: 'مواقف', terrace: 'سطح', void: 'منور', garage: 'كراج' };
 
 const cases: [string, (b: Brief) => void][] = [
   ['villa-20x25', () => {}],

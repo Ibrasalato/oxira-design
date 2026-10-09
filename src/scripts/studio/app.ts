@@ -7,6 +7,7 @@ import type { Viewer, View } from './viewer.ts';
 import type { StyleId } from './styles.ts';
 import { st } from '../../i18n/studio';
 import type { Lang } from '../../i18n/content';
+import { detectRegion, areaIn, lenIn } from '../../lib/region';
 
 type Cfg = { lang: Lang; render: string; finishing: string; listing: string; tour: string; planner: string; samples: Record<string, string>; whatsapp: string };
 
@@ -14,6 +15,12 @@ export function startStudio(root: HTMLElement) {
   const cfg: Cfg = JSON.parse(root.dataset.cfg!);
   const T = st[cfg.lang];
   const $ = <E extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as E;
+  // areas and lengths in the visitor's units (feet in the US, India …); CSV and team data stay metric
+  let units = detectRegion(cfg.lang).units;
+  document.addEventListener('ox-region', () => { units = detectRegion(cfg.lang).units; if (plan) { renderSummary(); viewer?.setPlan(plan); } });
+  const m2 = () => (units === 'ft' ? 'ft²' : T.boq.m2);
+  const mu = () => (units === 'ft' ? 'ft' : T.boq.m);
+  const fa = (a: number, d = 1) => `${fmt(areaIn(a, units), d)} ${m2()}`;
   const fmt = (n: number, d = 1) => new Intl.NumberFormat(cfg.lang === 'ar' ? 'ar-SA-u-nu-latn' : cfg.lang, { minimumFractionDigits: d, maximumFractionDigits: d }).format(n);
 
   let viewer: Viewer | null = null;
@@ -33,7 +40,7 @@ export function startStudio(root: HTMLElement) {
   async function ensureViewer() {
     if (viewer) return viewer;
     const { Viewer } = await import('./viewer.ts');
-    viewer = new Viewer($('sd-view'), { labels: (n, a) => `${n}\n${fmt(a)} m²` });
+    viewer = new Viewer($('sd-view'), { labels: (n, a) => `${n}\n${fa(a)}` });
     return viewer;
   }
 
@@ -145,7 +152,7 @@ export function startStudio(root: HTMLElement) {
   function renderSummary() {
     if (!plan) return;
     const total = plan.rooms.reduce((s, r) => s + r.area, 0);
-    $('sd-total').textContent = `${fmt(total)} ${T.boq.m2}`;
+    $('sd-total').textContent = fa(total);
     $('sd-stats').textContent = T.stats(plan.walls.length, plan.openings.length, plan.rooms.length);
     // rooms
     const ul = $('sd-rooms');
@@ -157,7 +164,7 @@ export function startStudio(root: HTMLElement) {
       name.value = r.name; name.dir = 'auto'; name.maxLength = 40;
       name.addEventListener('change', () => { edits.set(r.id, { ...edits.get(r.id), name: name.value.trim() }); r.name = name.value.trim() || T.types[r.type]; refreshModel(); });
       const area = document.createElement('b');
-      area.textContent = `${fmt(r.area)} ${T.boq.m2}`;
+      area.textContent = fa(r.area);
       const type = document.createElement('select');
       for (const k of Object.keys(T.types) as RoomType[]) { const o = document.createElement('option'); o.value = k; o.textContent = T.types[k]; type.appendChild(o); }
       type.value = r.type;
@@ -176,11 +183,11 @@ export function startStudio(root: HTMLElement) {
     if (!plan) return;
     const b = computeBoq(plan);
     const rows: [string, number, string][] = [
-      [T.boq.floor, b.total.floor, T.boq.m2],
-      [T.boq.paint, b.total.paint, T.boq.m2],
-      [T.boq.wetWalls, b.total.tiles, T.boq.m2],
-      [T.boq.ceiling, b.total.ceiling, T.boq.m2],
-      [T.boq.skirting, b.total.skirting, T.boq.m],
+      [T.boq.floor, areaIn(b.total.floor, units), m2()],
+      [T.boq.paint, areaIn(b.total.paint, units), m2()],
+      [T.boq.wetWalls, areaIn(b.total.tiles, units), m2()],
+      [T.boq.ceiling, areaIn(b.total.ceiling, units), m2()],
+      [T.boq.skirting, lenIn(b.total.skirting, units), mu()],
     ];
     $('sd-boq').innerHTML = rows.map(([k, v, u]) => `<tr><td>${k}</td><td>${fmt(v, 1)} ${u}</td></tr>`).join('');
   }
@@ -434,8 +441,8 @@ export function startStudio(root: HTMLElement) {
     if (!(ev.target as HTMLElement).closest('[data-sd-quote]') || !plan) return;
     const b = computeBoq(plan);
     $('sd-quote-sum').innerHTML = [
-      [T.rooms.total, b.total.area, T.boq.m2], [T.boq.floor, b.total.floor, T.boq.m2], [T.boq.paint, b.total.paint, T.boq.m2],
-      [T.boq.wetWalls, b.total.tiles, T.boq.m2], [T.boq.ceiling, b.total.ceiling, T.boq.m2], [T.boq.skirting, b.total.skirting, T.boq.m],
+      [T.rooms.total, areaIn(b.total.area, units), m2()], [T.boq.floor, areaIn(b.total.floor, units), m2()], [T.boq.paint, areaIn(b.total.paint, units), m2()],
+      [T.boq.wetWalls, areaIn(b.total.tiles, units), m2()], [T.boq.ceiling, areaIn(b.total.ceiling, units), m2()], [T.boq.skirting, lenIn(b.total.skirting, units), mu()],
     ].map(([k, v, u]) => `<span>${k}: <b>${fmt(v as number, 0)} ${u}</b></span>`).join('');
     qSay(plan.rooms.length ? '' : T.quote.noRooms);
     $<HTMLButtonElement>('sd-quote-send').disabled = !plan.rooms.length;

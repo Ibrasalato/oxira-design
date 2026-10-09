@@ -10,9 +10,9 @@ export type Kind =
   | 'entrance' | 'hall' | 'living' | 'majlis' | 'ladies' | 'dining' | 'kitchen'
   | 'master' | 'bedroom' | 'guest' | 'bath' | 'wc' | 'dress' | 'maid' | 'driver'
   | 'laundry' | 'store' | 'office' | 'prayer' | 'stair' | 'lift' | 'landing'
-  | 'shop' | 'parking' | 'terrace' | 'void';
+  | 'shop' | 'parking' | 'terrace' | 'void' | 'garage';
 
-export const KINDS: Kind[] = ['entrance', 'hall', 'living', 'majlis', 'ladies', 'dining', 'kitchen', 'master', 'bedroom', 'guest', 'bath', 'wc', 'dress', 'maid', 'driver', 'laundry', 'store', 'office', 'prayer', 'stair', 'lift', 'landing', 'shop', 'parking', 'terrace', 'void'];
+export const KINDS: Kind[] = ['entrance', 'hall', 'living', 'majlis', 'ladies', 'dining', 'kitchen', 'master', 'bedroom', 'guest', 'bath', 'wc', 'dress', 'maid', 'driver', 'laundry', 'store', 'office', 'prayer', 'stair', 'lift', 'landing', 'shop', 'parking', 'terrace', 'void', 'garage'];
 
 export type Rect = { x0: number; y0: number; x1: number; y1: number };
 export type Axis = 'x' | 'y';
@@ -26,12 +26,15 @@ export type Floor = { id: string; key: FloorKey; level: number; repeat: number; 
 export type BuildingType = 'villa' | 'duplex' | 'building' | 'mixed' | 'istiraha';
 export type Brief = {
   type: BuildingType;
+  /** country preset id (src/lib/region.ts) and preferred display units; the model always works in metres */
+  region?: string;
+  units?: 'm' | 'ft';
   land: { w: number; d: number; streets: number; streetW: number };
   setback: { front: number; back: number; side: number };
   villa: {
     floors: number; roof: boolean; bedrooms: number; masters: number; ensuiteAll: boolean; baths: number;
     majlis: boolean; ladies: boolean; dining: boolean; kitchen: 'closed' | 'open';
-    maid: boolean; driver: boolean; laundry: boolean; store: boolean; office: boolean; guestBed: boolean; prayer: boolean; lift: boolean;
+    maid: boolean; driver: boolean; laundry: boolean; store: boolean; office: boolean; guestBed: boolean; prayer: boolean; lift: boolean; garage?: boolean;
   };
   bld: { floors: number; perFloor: number; beds: number; majlis: boolean; maid: boolean; ground: 'parking' | 'shops' | 'apartments'; roof: boolean; lift: boolean };
 };
@@ -45,7 +48,7 @@ const STAIR_LEN = 4.2, STAIR_W = 2.6, LIFT_LEN = 2.1, CORE_W = 2.8;
 export const AREA: Record<Kind, number> = {
   entrance: 6, hall: 14, living: 26, majlis: 30, ladies: 24, dining: 18, kitchen: 15, master: 22, bedroom: 16, guest: 15,
   bath: 5, wc: 3, dress: 5, maid: 11, driver: 11, laundry: 6, store: 4, office: 12, prayer: 8, stair: 11, lift: 5, landing: 10,
-  shop: 40, parking: 60, terrace: 20, void: 6,
+  shop: 40, parking: 60, terrace: 20, void: 6, garage: 36,
 };
 /** Minimum sensible width of a room (m), used for warnings. */
 const MIN_W: Partial<Record<Kind, number>> = { master: 3.4, bedroom: 3, guest: 3, majlis: 3.8, ladies: 3.6, living: 3.6, dining: 3, kitchen: 2.4, maid: 2.4, driver: 2.4, office: 2.6 };
@@ -369,6 +372,7 @@ function genUnit(c: Ctx, r: Rect, prog: Prog, o: UnitOpts): Node {
 // ------------------------------------------------------------------ programmes
 function villaGround(b: Brief['villa'], single: boolean, small: boolean): Prog {
   const p = new Prog();
+  if (b.garage) p.add('garage', { near: true, area: small ? 20 : 36 });
   if (b.majlis) p.add('majlis', { near: true, area: small ? 22 : 30, kids: [['wc', 3]] });
   if (b.ladies) p.add('ladies', { near: true, area: small ? 18 : 24 });
   if (b.office) p.add('office', { near: true });
@@ -769,7 +773,7 @@ function exteriorEdges(r: Rect, F: Rect): (Edge & { side: Side })[] {
 
 const DOOR_W: Partial<Record<Kind, number>> = { bath: 0.8, wc: 0.8, dress: 0.8, store: 0.8, laundry: 0.8, lift: 1.0, majlis: 1.2, ladies: 1.0, kitchen: 0.9 };
 const doorW = (k: Kind) => DOOR_W[k] ?? 0.9;
-const PREF: Kind[] = ['hall', 'entrance', 'landing', 'living', 'dining', 'kitchen', 'majlis', 'master', 'bedroom', 'guest', 'maid', 'driver', 'office', 'prayer', 'ladies', 'laundry', 'store', 'dress', 'bath', 'wc', 'stair', 'lift', 'shop', 'parking', 'terrace', 'void'];
+const PREF: Kind[] = ['hall', 'entrance', 'landing', 'living', 'dining', 'kitchen', 'majlis', 'master', 'bedroom', 'guest', 'maid', 'driver', 'office', 'prayer', 'ladies', 'laundry', 'store', 'dress', 'bath', 'wc', 'stair', 'lift', 'shop', 'parking', 'terrace', 'void', 'garage'];
 const rank = (k: Kind) => PREF.indexOf(k);
 
 export function geometry(f: Floor, ground: boolean, topOfStair = false): Geometry {
@@ -895,11 +899,11 @@ export function geometry(f: Floor, ground: boolean, topOfStair = false): Geometr
       unitsWithEntry.add(l.unit);
     }
     for (const l of ls) {
-      if (l.kind !== 'shop' && l.kind !== 'parking') continue;
+      if (l.kind !== 'shop' && l.kind !== 'parking' && l.kind !== 'garage') continue;
       const e = exteriorEdges(rect(l), F).find((x) => x.side === 'S');
       if (!e) continue;
       const len = e.t1 - e.t0;
-      if (l.kind === 'parking') { const w = Math.min(len - 0.6, 6); const t0 = (e.t0 + e.t1) / 2 - w / 2; extDoors.push({ kind: 'gate', axis: 'y', c: e.c, t0, t1: t0 + w, th: T_EXT }); }
+      if (l.kind === 'parking' || l.kind === 'garage') { const w = Math.min(len - 0.6, l.kind === 'garage' ? 5 : 6); const t0 = (e.t0 + e.t1) / 2 - w / 2; extDoors.push({ kind: 'gate', axis: 'y', c: e.c, t0, t1: t0 + w, th: T_EXT }); }
       else { const t0 = e.t0 + 0.3; extDoors.push({ kind: 'door', axis: 'y', c: e.c, t0, t1: t0 + 1.0, th: T_EXT, into: 1, hingeAt0: true, main: true }); }
     }
   }

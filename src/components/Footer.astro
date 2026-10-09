@@ -3,6 +3,7 @@ import { t, CONTACT, type Lang } from '../i18n/content';
 import { link } from '../lib/routes';
 import Logo from './Logo.astro';
 import LangPicker from './LangPicker.astro';
+import RegionPicker from './RegionPicker.astro';
 
 interface Props { lang: Lang; path: string; langs?: Lang[] }
 const { lang, path, langs } = Astro.props;
@@ -23,6 +24,7 @@ const guideLinks = gl ? GUIDES.filter((g) => g.kind === 'service').map((g) => ({
       <a href={home} class="ft-logo" aria-label="Oxira Design"><Logo variant="dark" /><span>{c.brandSub}</span></a>
       <p>{c.footer.tagline}</p>
       <LangPicker lang={lang} path={path} langs={langs} tone="dark" up />
+      <RegionPicker lang={lang} />
     </div>
     <div>
       <h2>{c.footer.product}</h2>
@@ -57,6 +59,11 @@ const guideLinks = gl ? GUIDES.filter((g) => g.kind === 'service').map((g) => ({
   </div>
   <div class="wrap ft-bottom">© {year} Oxira. {c.footer.rights}</div>
 </footer>
+
+<script>
+  import { initRegionUi } from '../scripts/regionUi';
+  initRegionUi();
+</script>
 
 <style>
   .ft { padding-block: 4rem 2rem; }

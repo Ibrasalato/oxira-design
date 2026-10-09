@@ -17,10 +17,10 @@ const usd = (n: number) => (lang === 'ar' ? '' : `≈ $${fmt(n / PRICES.usd)}`);
 const free = { ar: 'مجاناً', en: 'Free', de: 'Kostenlos', fr: 'Gratuit', ru: 'Бесплатно' }[lang];
 const P = c.packages;
 const cards = [
-  { id: 'free', price: free, unit: '', sub: '', href: studio, primary: false },
-  { id: 'quick', price: fmt(PRICES.quick), unit: P.currency, sub: usd(PRICES.quick), href: '#order', primary: true },
-  { id: 'design', price: fmt(PRICES.designPerM2), unit: `${P.currency} ${P.perM2}`, sub: `${P.min} ${fmt(PRICES.designMin)} ${P.currency}`, href: '#order', primary: false },
-  { id: 'premium', price: P.quote, unit: '', sub: '', href: '#order', primary: false },
+  { id: 'free', price: free, unit: '', sub: '', sar: 0, href: studio, primary: false },
+  { id: 'quick', price: fmt(PRICES.quick), unit: P.currency, sub: usd(PRICES.quick), sar: PRICES.quick, href: '#order', primary: true },
+  { id: 'design', price: fmt(PRICES.designPerM2), unit: `${P.currency} ${P.perM2}`, sub: `${P.min} ${fmt(PRICES.designMin)} ${P.currency}`, sar: 0, href: '#order', primary: false },
+  { id: 'premium', price: P.quote, unit: '', sub: '', sar: 0, href: '#order', primary: false },
 ] as const;
 const audienceIcons = ['user', 'building', 'megaphone', 'pencil'];
 // Service guides exist in Arabic and English only.
@@ -134,7 +134,7 @@ const pr = pl[lang].promo;
             <h3>{it.name}</h3>
             <p class="pk-desc">{it.desc}</p>
             <p class="pk-price"><b>{k.price}</b>{k.unit && <span>{k.unit}</span>}</p>
-            <p class="pk-sub">{k.sub || ' '}</p>
+            <p class="pk-sub">{k.sar ? <span data-sar={k.sar}>{k.sub}</span> : (k.sub || ' ')}</p>
             <ul>{it.features.map((f) => <li><Icon name="check" />{f}</li>)}</ul>
             <a class={`btn ${k.primary ? 'btn-amber' : k.id === 'free' ? 'btn-navy' : 'btn-ghost'}`} href={k.href} data-package={k.id === 'free' ? undefined : k.id}>{it.cta}</a>
           </li>
@@ -155,7 +155,7 @@ const pr = pl[lang].promo;
     <div class="dev-card">
       <p class="label">{P.items.developer.name}</p>
       <p class="pk-price"><span class="dev-from">{lang === 'ar' ? 'من' : lang === 'de' ? 'ab' : lang === 'fr' ? 'dès' : lang === 'ru' ? 'от' : 'from'}</span><b>{fmt(PRICES.developer)}</b><span>{P.currency} / {P.month}</span></p>
-      <p class="pk-sub">{usd(PRICES.developer)}</p>
+      <p class="pk-sub"><span data-sar={PRICES.developer} data-suffix={` ${P.month}`}>{usd(PRICES.developer)}</span></p>
       <ul>{P.items.developer.features.map((f) => <li><Icon name="check" />{f}</li>)}</ul>
       <a class="btn btn-amber" href="#order" data-package="developer">{P.items.developer.cta}</a>
     </div>

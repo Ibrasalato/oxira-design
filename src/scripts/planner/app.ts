@@ -1,9 +1,21 @@
 // Plan designer page: brief form → concept plan → editing → request to the team.
-import { generate, defaultBrief, frontSetback, totals, dividers, moveDivider, splitRoom, mergeRoom, swapRooms, leaves, geometry, type Brief, type Project, type Floor, type Kind, type Divider } from './model.ts';
+import { generate, defaultBrief, totals, dividers, moveDivider, splitRoom, mergeRoom, swapRooms, leaves, geometry, type Brief, type Project, type Floor, type Kind, type Divider } from './model.ts';
 import { floorSvg, toDxf } from './render.ts';
 import { pl, PLAN_TYPES } from '../../i18n/planner';
 import type { Lang } from '../../i18n/content';
 import { isPdf, pdfToImage } from '../pdfImage';
+import { rg } from '../../i18n/region';
+import { detectRegion, regionById, regionName, saveRegion, lenIn, lenOut, areaIn, type Region, type Units, type Programme } from '../../lib/region';
+
+/** Rooms people expect by default, per region (the visitor can tick anything on or off). */
+const PROGRAMME: Record<Programme, { villa: Partial<Brief['villa']>; bld: Partial<Brief['bld']> }> = {
+  gulf: { villa: { majlis: true, ladies: true, dining: true, maid: true, driver: false, laundry: true, store: true, office: false, garage: false, kitchen: 'closed', ensuiteAll: true, prayer: false, guestBed: false }, bld: { majlis: true, maid: false } },
+  egypt: { villa: { majlis: false, ladies: false, dining: true, maid: false, driver: false, laundry: false, store: true, office: false, garage: false, kitchen: 'closed', ensuiteAll: false, baths: 1, prayer: false, guestBed: false }, bld: { majlis: false, maid: false } },
+  levant: { villa: { majlis: false, ladies: false, dining: true, maid: false, driver: false, laundry: true, store: true, office: false, garage: false, kitchen: 'closed', ensuiteAll: false, baths: 1, prayer: false, guestBed: false }, bld: { majlis: false, maid: false } },
+  western: { villa: { majlis: false, ladies: false, dining: true, maid: false, driver: false, laundry: true, store: false, office: true, garage: true, kitchen: 'open', ensuiteAll: false, baths: 1, prayer: false, guestBed: false }, bld: { majlis: false, maid: false } },
+  asia: { villa: { majlis: false, ladies: false, dining: true, maid: true, driver: false, laundry: true, store: true, office: false, garage: false, kitchen: 'closed', ensuiteAll: true, prayer: false, guestBed: false }, bld: { majlis: false, maid: false } },
+};
+const LEN = ['land.w', 'land.d', 'land.streetW', 'setback.front', 'setback.back', 'setback.side'];
 
 type Cfg = { lang: Lang; order: string; studio: string; whatsapp: string };
 type Extras = { planTypes: string[]; formats: string[]; facade: string };
@@ -31,11 +43,24 @@ export function startPlanner(root: HTMLElement) {
   let edited = false;
   let path: 'new' | 'upload' = 'new';
   const undo: string[] = [];
-  let frontTouched = false;
+  let sbTouched = false;
+  let region: Region = detectRegion(cfg.lang);
+  let units: Units = 'm'; // the form is rendered in metres; applyRegion / restore switch it
+  const u2 = () => (units === 'ft' ? 'ft²' : T.m2);
+  const uL = () => (units === 'ft' ? 'ft' : T.land.m);
+  /** lengths and areas in the visitor's units */
+  const L = (m: number, d = 1) => `${fmt(lenIn(m, units), d)} ${uL()}`;
+  const A = (m2: number, d = 1) => `${fmt(areaIn(m2, units), d)} ${u2()}`;
+  const DM = (w: number, h: number) => `${fmt(lenIn(w, units), units === 'ft' ? 1 : 2)} × ${fmt(lenIn(h, units), units === 'ft' ? 1 : 2)}`;
 
   // ------------------------------------------------------------ brief form
   const val = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | RadioNodeList | null;
-  const numOf = (name: string, def: number) => { const e = val(name) as HTMLInputElement | null; const v = parseFloat(e?.value || ''); return isFinite(v) ? v : def; };
+  const numOf = (name: string, def: number) => {
+    const e = val(name) as HTMLInputElement | null;
+    const v = parseFloat(e?.value || '');
+    if (!isFinite(v)) return def;
+    return LEN.includes(name) ? lenOut(v, units) : v;
+  };
   const boolOf = (name: string) => !!(val(name) as HTMLInputElement | null)?.checked;
   const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
@@ -44,6 +69,8 @@ export function startPlanner(root: HTMLElement) {
     const type = (form.querySelector<HTMLInputElement>('input[name=type]:checked')?.value || 'villa') as Brief['type'];
     const b: Brief = {
       type,
+      region: region.id,
+      units,
       land: { w: clamp(numOf('land.w', d.land.w), 6, 300), d: clamp(numOf('land.d', d.land.d), 6, 300), streets: numOf('land.streets', 1), streetW: clamp(numOf('land.streetW', 15), 4, 100) },
       setback: { front: clamp(numOf('setback.front', 2), 0, 20), back: clamp(numOf('setback.back', 2), 0, 20), side: clamp(numOf('setback.side', 2), 0, 20) },
       villa: {
@@ -51,7 +78,7 @@ export function startPlanner(root: HTMLElement) {
         masters: clamp(Math.round(numOf('villa.masters', 1)), 0, 4), ensuiteAll: boolOf('villa.ensuiteAll'), baths: clamp(Math.round(numOf('villa.baths', 1)), 0, 4),
         majlis: boolOf('villa.majlis'), ladies: boolOf('villa.ladies'), dining: boolOf('villa.dining'), kitchen: ((val('villa.kitchen') as HTMLSelectElement)?.value as 'open' | 'closed') || 'closed',
         maid: boolOf('villa.maid'), driver: boolOf('villa.driver'), laundry: boolOf('villa.laundry'), store: boolOf('villa.store'), office: boolOf('villa.office'),
-        guestBed: boolOf('villa.guestBed'), prayer: boolOf('villa.prayer'), lift: boolOf('villa.lift'),
+        guestBed: boolOf('villa.guestBed'), prayer: boolOf('villa.prayer'), lift: boolOf('villa.lift'), garage: boolOf('villa.garage'),
       },
       bld: {
         floors: clamp(Math.round(numOf('bld.floors', 3)), 1, 20), perFloor: clamp(Math.round(numOf('bld.perFloor', 2)), 1, 4), beds: clamp(Math.round(numOf('bld.beds', 3)), 1, 5),
@@ -68,7 +95,8 @@ export function startPlanner(root: HTMLElement) {
     const set = (name: string, v: number | string | boolean) => {
       const e = val(name) as HTMLInputElement | HTMLSelectElement | null;
       if (!e || e instanceof RadioNodeList) return;
-      if (e instanceof HTMLInputElement && e.type === 'checkbox') e.checked = !!v; else e.value = String(v);
+      if (e instanceof HTMLInputElement && e.type === 'checkbox') e.checked = !!v;
+      else e.value = typeof v === 'number' && LEN.includes(name) ? String(Math.round(lenIn(v, units) * 10) / 10) : String(v);
     };
     const r = form.querySelector<HTMLInputElement>(`input[name=type][value=${b.type}]`);
     if (r) r.checked = true;
@@ -79,13 +107,48 @@ export function startPlanner(root: HTMLElement) {
     root.querySelectorAll<HTMLInputElement>('input[name=planTypes]').forEach((i) => { i.checked = x.planTypes.includes(i.value); });
     root.querySelectorAll<HTMLInputElement>('input[name=formats]').forEach((i) => { i.checked = x.formats.includes(i.value); });
     set('facade', x.facade);
-    frontTouched = Math.abs(b.setback.front - frontSetback(b.land.streetW)) > 0.01;
+  }
+
+  /** Units: relabel and convert the length inputs. */
+  function setUnits(next: Units) {
+    if (next === units) return;
+    const vals = LEN.map((n) => numOf(n, 0)); // metres, read with the old units
+    units = next;
+    LEN.forEach((n, i) => { const e = val(n) as HTMLInputElement | null; if (e) e.value = String(Math.round(lenIn(vals[i], units) * 10) / 10); });
+    const k = units === 'ft' ? lenIn(1, 'ft') : 1;
+    LEN.forEach((n) => {
+      const e = val(n) as HTMLInputElement | null;
+      if (!e) return;
+      if (!e.dataset.min) { e.dataset.min = e.min; e.dataset.max = e.max; e.dataset.step = e.step; }
+      e.min = String(Math.round(Number(e.dataset.min) * k)); e.max = String(Math.round(Number(e.dataset.max) * k));
+      e.step = units === 'ft' ? '1' : e.dataset.step || '0.5';
+    });
+    root.querySelectorAll<HTMLElement>('.pl-u').forEach((i) => { i.textContent = uL(); });
+    $('pl-area-u').textContent = u2();
+    const r = form.querySelector<HTMLInputElement>(`input[name=units][value=${units}]`);
+    if (r) r.checked = true;
+  }
+
+  /** Country preset: units, setbacks and the rooms people there usually ask for. */
+  function applyRegion(r: Region, programme = true) {
+    region = r;
+    setUnits(r.units);
+    const b = readBrief();
+    const bld = b.type === 'building' || b.type === 'mixed';
+    const sb = (bld && r.bldSetback) || r.setback;
+    b.land.streetW = r.streetW;
+    b.setback = { front: sb.front(r.streetW), side: sb.side, back: sb.back };
+    if (programme) { Object.assign(b.villa, PROGRAMME[r.programme].villa); Object.assign(b.bld, PROGRAMME[r.programme].bld); }
+    writeBrief(b, readExtras());
+    sbTouched = false;
+    syncForm();
   }
 
   function syncForm() {
     const b = readBrief();
-    $('pl-area').textContent = fmt(b.land.w * b.land.d, 0);
-    $('pl-sb-sum').textContent = `${b.setback.front} · ${b.setback.side} · ${b.setback.back}`;
+    $('pl-area').textContent = fmt(areaIn(b.land.w * b.land.d, units), 0);
+    const r1 = (m: number) => Math.round(lenIn(m, units) * 10) / 10;
+    $('pl-sb-sum').textContent = `${r1(b.setback.front)} · ${r1(b.setback.side)} · ${r1(b.setback.back)} ${uL()}`;
     root.querySelectorAll<HTMLElement>('.pl-sub').forEach((s) => { s.hidden = !(s.dataset.for || '').split(' ').includes(b.type); });
     root.querySelectorAll<HTMLElement>('[data-hide-ist]').forEach((e) => { e.hidden = b.type === 'istiraha'; });
     root.querySelectorAll<HTMLElement>('[data-hide-mixed]').forEach((e) => { e.hidden = b.type === 'mixed'; });
@@ -101,8 +164,19 @@ export function startPlanner(root: HTMLElement) {
   });
   form.addEventListener('input', (e) => {
     const t = e.target as HTMLInputElement;
-    if (t.name === 'setback.front') frontTouched = true;
-    if (t.name === 'land.streetW' && !frontTouched) (val('setback.front') as HTMLInputElement).value = String(frontSetback(parseFloat(t.value) || 15));
+    if (t.name === 'units') { setUnits(t.value as Units); syncForm(); render(); save(); return; }
+    if (t.name?.startsWith('setback.')) sbTouched = true;
+    if (t.name === 'land.streetW' && !sbTouched) {
+      const bld = ['building', 'mixed'].includes(readBrief().type);
+      const f = ((bld && region.bldSetback) || region.setback).front(numOf('land.streetW', 15));
+      (val('setback.front') as HTMLInputElement).value = String(Math.round(lenIn(f, units) * 10) / 10);
+    }
+    if (t.name === 'type' && !sbTouched) {
+      const bld = ['building', 'mixed'].includes(t.value);
+      const sb = (bld && region.bldSetback) || region.setback;
+      const set = (n: string, m: number) => { (val(n) as HTMLInputElement).value = String(Math.round(lenIn(m, units) * 10) / 10); };
+      set('setback.front', sb.front(numOf('land.streetW', 15))); set('setback.side', sb.side); set('setback.back', sb.back);
+    }
     syncForm();
     if (['planTypes', 'formats', 'facade'].includes(t.name)) { save(); return; }
     if (!edited) scheduleGen();
@@ -147,11 +221,16 @@ export function startPlanner(root: HTMLElement) {
     });
     const warn = $('pl-warn');
     const ws = project.warnings.map((w) => (T.editor.warn as Record<string, string>)[w]).filter(Boolean);
+    {
+      const bld = project.brief.type === 'building' || project.brief.type === 'mixed';
+      const max = ((bld && region.bldSetback) || region.setback).coverage;
+      if (totals(project).coverage > max + 0.02) ws.push(T.editor.warn.coverage.replace('{max}', String(Math.round(max * 100))));
+    }
     warn.hidden = !ws.length;
     warn.innerHTML = ws.map((w) => `<div>${w}</div>`).join('');
     const f = project.floors[floorIdx];
     if (!f) { canvas.innerHTML = `<p class="pl-empty">${T.editor.empty}</p>`; $('pl-stats').innerHTML = ''; return; }
-    const out = floorSvg(project, f, { names, fmt, m2: T.m2, street: T.street, rtl, edit: true, selected, swapFrom });
+    const out = floorSvg(project, f, { names, fmt, m2: T.m2, len: L, area: (a) => A(a), dims: DM, street: T.street, rtl, edit: true, selected, swapFrom });
     view = out.view;
     canvas.innerHTML = out.svg;
     // stats
@@ -159,10 +238,10 @@ export function startPlanner(root: HTMLElement) {
     const cur = tt.per[floorIdx];
     const stat = (k: string, v: string) => `<div><dt>${k}</dt><dd dir="ltr">${v}</dd></div>`;
     $('pl-stats').innerHTML =
-      stat(T.editor.stats.land, `${fmt(tt.landArea, 0)} ${T.m2}`) +
-      stat(T.editor.stats.built, `${fmt(tt.built, 0)} ${T.m2}`) +
+      stat(T.editor.stats.land, A(tt.landArea, 0)) +
+      stat(T.editor.stats.built, A(tt.built, 0)) +
       stat(T.editor.stats.coverage, `${fmt(tt.coverage * 100, 0)}%`) +
-      stat(T.editor.stats.floorArea, `${fmt(cur.gross, 0)} ${T.m2}`) +
+      stat(T.editor.stats.floorArea, A(cur.gross, 0)) +
       stat(T.editor.stats.rooms, String(out.geo.rooms.filter((r) => !['stair', 'lift', 'terrace', 'void'].includes(r.leaf.kind)).length));
     $<HTMLButtonElement>('pl-undo').disabled = !undo.length;
     renderRoomPanel();
@@ -186,7 +265,7 @@ export function startPlanner(root: HTMLElement) {
     if (document.activeElement !== nameIn) nameIn.value = l.name || '';
     nameIn.placeholder = names(l.kind);
     const g = geometry(f, f.level === 0).rooms.find((r) => r.leaf.id === l.id);
-    if (g) $('pl-room-size').textContent = `${fmt(g.net.x1 - g.net.x0, 2)} × ${fmt(g.net.y1 - g.net.y0, 2)} m · ${fmt(g.area)} ${T.m2}`;
+    if (g) $('pl-room-size').textContent = `${DM(g.net.x1 - g.net.x0, g.net.y1 - g.net.y0)} ${uL()} · ${A(g.area)}`;
   }
 
   const snapshot = () => JSON.stringify(project!.floors);
@@ -344,13 +423,14 @@ export function startPlanner(root: HTMLElement) {
     const tt = totals(project);
     const rows = briefRows(T).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('');
     box.setAttribute('dir', rtl ? 'rtl' : 'ltr');
-    box.innerHTML = `<section><h1>Oxira Design — ${esc(T.type.names[b.type])}</h1><table>${rows}<tr><th>${esc(T.editor.stats.built)}</th><td dir="ltr">${fmt(tt.built, 0)} ${T.m2}</td></tr></table><p>${esc(T.editor.note)}</p></section>` +
-      project.floors.map((f) => `<section><h2>${esc(floorLabel(f))}</h2>${floorSvg(project!, f, { names, fmt, m2: T.m2, street: T.street, rtl, edit: false }).svg}</section>`).join('');
+    box.innerHTML = `<section><h1>Oxira Design — ${esc(T.type.names[b.type])}</h1><table>${rows}<tr><th>${esc(T.editor.stats.built)}</th><td dir="ltr">${A(tt.built, 0)}</td></tr></table><p>${esc(T.editor.note)}</p></section>` +
+      project.floors.map((f) => `<section><h2>${esc(floorLabel(f))}</h2>${floorSvg(project!, f, { names, fmt, m2: T.m2, len: L, area: (a) => A(a), dims: DM, street: T.street, rtl, edit: false }).svg}</section>`).join('');
     window.print();
   });
   const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   // ------------------------------------------------------------ brief summary (for print and the team)
+  const r1m = (m: number) => Math.round(m * 100) / 100;
   function briefRows(t: typeof T): [string, string][] {
     if (!project) return [];
     const b = project.brief;
@@ -359,11 +439,14 @@ export function startPlanner(root: HTMLElement) {
     const prog = b.type === 'building' || b.type === 'mixed'
       ? [`${b.bld.floors} × ${t.bld.floors}`, `${b.bld.perFloor} ${t.bld.perFloor}`, `${b.bld.beds} ${t.bld.beds}`, `${t.bld.ground}: ${b.type === 'mixed' ? t.bld.gShops : b.bld.ground === 'parking' ? t.bld.gParking : b.bld.ground === 'shops' ? t.bld.gShops : t.bld.gApts}`, yes(b.bld.majlis, t.bld.majlis), yes(b.bld.maid, t.bld.maid), yes(b.bld.roof, t.bld.roof), yes(b.bld.lift, t.bld.lift)]
       : [b.type === 'istiraha' ? '' : `${b.villa.floors} ${t.villa.floors}`, `${b.villa.bedrooms} ${t.villa.bedrooms}`, b.type === 'istiraha' ? '' : `${b.villa.masters} ${t.villa.masters}`, yes(b.villa.ensuiteAll && b.type !== 'istiraha', t.villa.ensuiteAll), b.villa.baths && b.type !== 'istiraha' ? `${b.villa.baths} ${t.villa.baths}` : '',
-        yes(b.villa.majlis || b.type === 'istiraha', t.villa.majlis), yes(b.villa.ladies, t.villa.ladies), yes(b.villa.dining, t.villa.dining), `${t.villa.kitchen}: ${b.villa.kitchen === 'open' ? t.villa.open : t.villa.closed}`,
+        yes(b.villa.majlis || b.type === 'istiraha', t.villa.majlis), yes(b.villa.ladies, t.villa.ladies), yes(b.villa.dining, t.villa.dining), yes(!!b.villa.garage && b.type !== 'istiraha', t.villa.garage), `${t.villa.kitchen}: ${b.villa.kitchen === 'open' ? t.villa.open : t.villa.closed}`,
         yes(b.villa.maid && b.type !== 'istiraha', t.villa.maid), yes(b.villa.driver, t.villa.driver), yes(b.villa.laundry && b.type !== 'istiraha', t.villa.laundry), yes(b.villa.store, t.villa.store), yes(b.villa.office && b.type !== 'istiraha', t.villa.office),
         yes(b.villa.guestBed && b.type !== 'istiraha', t.villa.guestBed), yes(b.villa.prayer && b.type !== 'istiraha', t.villa.prayer), yes(b.villa.roof && b.type !== 'istiraha', t.villa.roof), yes(b.villa.lift && b.type !== 'istiraha', t.villa.lift)];
     return [
-      [t.brief.land, `${b.land.w} × ${b.land.d} m = ${Math.round(b.land.w * b.land.d)} m² · ${t.land.streets}: ${b.land.streets} · ${t.land.streetW}: ${b.land.streetW} m · ${t.land.setbacks}: ${t.land.front} ${b.setback.front} / ${t.land.side} ${b.setback.side} / ${t.land.back} ${b.setback.back}`],
+      [rg[t === AR ? 'ar' : cfg.lang].country, `${regionName(region.id, t === AR ? 'ar' : cfg.lang)}${t === AR && units === 'ft' ? ' (يفضّل العميل القدم)' : ''}`],
+      [t.brief.land, t === AR
+        ? `${r1m(b.land.w)} × ${r1m(b.land.d)} m = ${Math.round(b.land.w * b.land.d)} m² · ${t.land.streets}: ${b.land.streets} · ${t.land.streetW}: ${r1m(b.land.streetW)} m · ${t.land.setbacks}: ${t.land.front} ${r1m(b.setback.front)} / ${t.land.side} ${r1m(b.setback.side)} / ${t.land.back} ${r1m(b.setback.back)}`
+        : `${L(b.land.w)} × ${L(b.land.d)} = ${A(b.land.w * b.land.d, 0)} · ${t.land.streets}: ${b.land.streets} · ${t.land.streetW}: ${L(b.land.streetW)} · ${t.land.setbacks}: ${t.land.front} ${L(b.setback.front)} / ${t.land.side} ${L(b.setback.side)} / ${t.land.back} ${L(b.setback.back)}`],
       [t.brief.type, t.type.names[b.type]],
       [t.brief.program, prog.filter(Boolean).join(cfgSep(t))],
       [t.brief.planTypes, x.planTypes.map((k) => t.planTypes.names[k as (typeof PLAN_TYPES)[number]]).join(cfgSep(t))],
@@ -383,6 +466,9 @@ export function startPlanner(root: HTMLElement) {
     let s: Saved | null = null;
     try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { s = null; }
     if (!s || s.v !== 1 || !s.brief) return false;
+    region = regionById(s.brief.region) || region;
+    setUnits(s.brief.units || region.units);
+    document.querySelectorAll<HTMLSelectElement>('[data-region-select]').forEach((x) => { x.value = region.id; });
     writeBrief(s.brief, s.extras || { planTypes: ['arch'], formats: ['pdf'], facade: 'none' });
     syncForm();
     project = generate(s.brief);
@@ -537,8 +623,16 @@ export function startPlanner(root: HTMLElement) {
   });
 
   // ------------------------------------------------------------ start
+  document.addEventListener('ox-region', (e) => {
+    const r = regionById((e as CustomEvent).detail);
+    if (!r) return;
+    applyRegion(r);
+    if (!edited) regenerate(false);
+    else { $('pl-regen').hidden = false; render(); save(); }
+  });
+  void saveRegion;
   syncForm();
   const q = new URLSearchParams(location.search);
-  if (!restore()) regenerate(false);
+  if (!restore()) { applyRegion(region); regenerate(false); }
   if (q.get('path') === 'upload') setPath('upload');
 }
