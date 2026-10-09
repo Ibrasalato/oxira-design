@@ -154,7 +154,7 @@ const pr = pl[lang].promo;
     </div>
     <div class="dev-card">
       <p class="label">{P.items.developer.name}</p>
-      <p class="pk-price"><span class="dev-from">{lang === 'ar' ? 'من' : lang === 'de' ? 'ab' : lang === 'fr' ? 'dès' : lang === 'ru' ? 'от' : 'from'}</span><b>{fmt(PRICES.developer)}</b><span>{P.currency} / {P.month}</span></p>
+      <p class="pk-price"><span class="dev-from">{({ ar: 'من', de: 'ab', fr: 'dès', ru: 'от', es: 'desde', tr: 'başlangıç', zh: '起', hi: 'से शुरू', ur: 'سے شروع' } as Record<string, string>)[lang] || 'from'}</span><b>{fmt(PRICES.developer)}</b><span>{P.currency} / {P.month}</span></p>
       <p class="pk-sub"><span data-sar={PRICES.developer} data-suffix={` ${P.month}`}>{usd(PRICES.developer)}</span></p>
       <ul>{P.items.developer.features.map((f) => <li><Icon name="check" />{f}</li>)}</ul>
       <a class="btn btn-amber" href="#order" data-package="developer">{P.items.developer.cta}</a>

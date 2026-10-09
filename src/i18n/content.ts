@@ -1,7 +1,10 @@
 // All site copy, one object per language. Prices live in PRICES (keep in sync with the
 // "Price & checkout" node of the n8n workflow "Oxira Design").
 
-export type Lang = 'ar' | 'en' | 'de' | 'fr' | 'ru';
+import { extra } from './locales';
+export type Lang = 'ar' | 'en' | 'de' | 'fr' | 'ru' | 'es' | 'tr' | 'zh' | 'hi' | 'ur';
+/** right-to-left languages */
+export const isRtl = (l: Lang) => l === 'ar' || l === 'ur';
 
 export const languages: { code: Lang; name: string; flag: string; locale: string }[] = [
   { code: 'ar', name: 'العربية', flag: 'sa', locale: 'ar_SA' },
@@ -9,6 +12,11 @@ export const languages: { code: Lang; name: string; flag: string; locale: string
   { code: 'de', name: 'Deutsch', flag: 'de', locale: 'de_DE' },
   { code: 'fr', name: 'Français', flag: 'fr', locale: 'fr_FR' },
   { code: 'ru', name: 'Русский', flag: 'ru', locale: 'ru_RU' },
+  { code: 'es', name: 'Español', flag: 'es', locale: 'es_ES' },
+  { code: 'tr', name: 'Türkçe', flag: 'tr', locale: 'tr_TR' },
+  { code: 'zh', name: '中文', flag: 'cn', locale: 'zh_CN' },
+  { code: 'hi', name: 'हिन्दी', flag: 'in', locale: 'hi_IN' },
+  { code: 'ur', name: 'اردو', flag: 'pk', locale: 'ur_PK' },
 ];
 export const langPath = (l: Lang) => (l === 'ar' ? '/' : `/${l}/`);
 
@@ -727,5 +735,5 @@ const ru: Content = {
   notFound: { title: 'Страница не найдена', body: 'Ссылка не существует или была перемещена.', home: 'На главную' },
 };
 
-export const t: Record<Lang, Content> = { ar, en, de, fr, ru };
+export const t: Record<Lang, Content> = { ar, en, de, fr, ru, es: extra.es.content, tr: extra.tr.content, zh: extra.zh.content, hi: extra.hi.content, ur: extra.ur.content };
 export type { Content };

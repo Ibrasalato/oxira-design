@@ -13,6 +13,8 @@ import '@fontsource/cairo/arabic-400.css';
 import '@fontsource/cairo/arabic-500.css';
 import '@fontsource/cairo/arabic-600.css';
 import '@fontsource/cairo/arabic-700.css';
+import '@fontsource/noto-sans-devanagari/devanagari-400.css';
+import '@fontsource/noto-sans-devanagari/devanagari-700.css';
 import '../styles/global.css';
 import { t, languages, CONTACT, type Lang } from '../i18n/content';
 import { legal } from '../i18n/legal';
@@ -92,7 +94,7 @@ const ld = {
     </script>}
   </head>
   <body class={app ? 'is-app' : ''}>
-    <a class="skip" href="#main">{lang === 'ar' ? 'انتقل إلى المحتوى' : 'Skip to content'}</a>
+    <a class="skip" href="#main">{lang === 'ar' ? 'انتقل إلى المحتوى' : lang === 'ur' ? 'مواد پر جائیں' : 'Skip to content'}</a>
     <Header lang={lang} path={path} app={app} langs={langs} />
     <main id="main">
       <slot />

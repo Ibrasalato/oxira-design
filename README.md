@@ -20,8 +20,8 @@ npm run test:planner  # generates concept plans, reads them back with the DXF en
 
 | What | Where |
 | --- | --- |
-| Site copy in 5 languages, contact details, n8n URLs, **prices** | `src/i18n/content.ts` (`PRICES`) |
-| Studio copy in 5 languages | `src/i18n/studio.ts` |
+| Site copy (ar, en, de, fr, ru; es, tr, zh, hi, ur in `src/i18n/locales/`), contact details, n8n URLs, **prices** | `src/i18n/content.ts` (`PRICES`) |
+| Studio copy (new languages in `src/i18n/locales/`) | `src/i18n/studio.ts` |
 | Landing page sections | `src/components/Home.astro` |
 | Studio page (panel, viewport, dialogs) | `src/components/Studio.astro` |
 | Order form (used on the landing page and inside the studio) | `src/components/OrderForm.astro` |
@@ -100,3 +100,7 @@ PDFs to the team.
 
 - `src/lib/ifc.ts`: small IFC4 writer (storeys, walls, doors and windows in real openings, slabs, IfcSpace rooms; metres, non-ASCII names as \X2\). Used by the plan designer (`src/scripts/planner/ifc.ts`, all floors, 3.2 m storeys) and the studio (`src/scripts/studio/ifc.ts`, one storey at the chosen wall height). Checked with ifcopenshell: no schema issues, geometry builds.
 - AR in the studio: the model (without ceilings, centred) goes to `<model-viewer>` (`@google/model-viewer` 4.3.1, loaded on demand): WebXR on Android Chrome, Quick Look on iPhone (USDZ made in the browser). Table-top (1:20) or real size.
+
+## Languages
+
+Ten languages: ar (default, no prefix, RTL), en, de, fr, ru, es, tr, zh, hi, ur (RTL). The first five live in each file under `src/i18n/`; the other five each have one file in `src/i18n/locales/<code>.ts` holding all their copy (content, planner, studio, redesign, region, account, legal, tour) in the same shapes. To add a language: add it to `Lang` and `languages` in `content.ts`, to `astro.config.mjs`, copy a locale file and translate it, add it to `locales/index.ts` and the records, add `public/flags/<flag>.svg` and run `OG_ONLY=<code> python3 scripts/og.py` with the preview running. RTL languages: set `dir: "rtl"` in the copy and add the code to `isRtl`.

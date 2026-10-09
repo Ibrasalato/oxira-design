@@ -9,6 +9,11 @@ TXT = {
   'de': ('ltr', 'Vom AutoCAD-Plan zum 3D-Innendesign', 'DXF hochladen und Ihr Zuhause in Sekunden in 3D sehen'),
   'fr': ('ltr', 'Du plan AutoCAD au design intérieur 3D', 'Importez un DXF et voyez votre logement en 3D en quelques secondes'),
   'ru': ('ltr', 'От чертежа AutoCAD до 3D-дизайна интерьера', 'Загрузите DXF и увидьте дом в 3D за секунды'),
+  'es': ('ltr', 'Del plano AutoCAD al diseño interior 3D', 'Suba un DXF y vea su casa en 3D con superficies y muebles en segundos'),
+  'tr': ('ltr', 'AutoCAD planından 3D iç mimariye', 'DXF yükleyin, evinizi alanları ve mobilyalarıyla saniyeler içinde 3D görün'),
+  'zh': ('ltr', '从 AutoCAD 平面图到 3D 室内设计', '上传 DXF，几秒内即可看到带面积和家具的 3D 住宅'),
+  'hi': ('ltr', 'AutoCAD प्लान से 3D इंटीरियर डिज़ाइन तक', 'DXF अपलोड करें और सेकंडों में अपना घर 3D में देखें'),
+  'ur': ('rtl', 'آٹوکیڈ پلان سے تھری ڈی انٹیریئر ڈیزائن تک', 'DXF اپ لوڈ کریں اور سیکنڈوں میں اپنا گھر تھری ڈی میں دیکھیں'),
 }
 logo = open(os.path.join(ROOT, 'public/favicon.svg')).read()
 with sync_playwright() as p:
@@ -21,17 +26,20 @@ with sync_playwright() as p:
     pg.wait_for_timeout(2500)
     shot = pg.locator('#sd-view').screenshot()
     model = 'data:image/png;base64,' + base64.b64encode(shot).decode()
+    only = os.environ.get('OG_ONLY', '').split(',') if os.environ.get('OG_ONLY') else None
     for lang, (d, title, sub) in TXT.items():
+        if only and lang not in only: continue
         html = f'''<html dir="{d}"><head><style>
 @font-face {{ font-family: Cairo; font-weight: 700; src: url({F('cairo/files/cairo-arabic-700-normal.woff2')}); }}
 @font-face {{ font-family: Plex; font-weight: 700; src: url({F('ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff2')}); }}
 @font-face {{ font-family: Plex; font-weight: 700; src: url({F('ibm-plex-sans/files/ibm-plex-sans-cyrillic-700-normal.woff2')}); unicode-range: U+0400-04FF; }}
-body {{ margin:0; width:1200px; height:630px; background:#0A253E; font-family: Plex, Cairo, sans-serif; color:#fff; overflow:hidden; position:relative; }}
+@font-face {{ font-family: Deva; font-weight: 700; src: url({F('noto-sans-devanagari/files/noto-sans-devanagari-devanagari-700-normal.woff2')}); }}
+body {{ margin:0; width:1200px; height:630px; background:#0A253E; font-family: Plex, Cairo, Deva, 'Noto Sans CJK SC', 'Noto Sans CJK TC', sans-serif; color:#fff; overflow:hidden; position:relative; }}
 .img {{ position:absolute; top:40px; bottom:40px; inset-inline-end:40px; width:560px; border-radius:24px; background:#F3F6F8 url({model}) center/cover; }}
 .txt {{ position:absolute; inset-inline-start:64px; top:70px; width:500px; }}
 .brand {{ display:flex; align-items:center; gap:14px; font-size:34px; direction:ltr; justify-content:flex-{'end' if d=='rtl' else 'start'}; }}
 .brand svg {{ width:46px; height:46px; }} .brand b {{ color:#F5A800; font-size:26px; border-left:2px solid rgba(255,255,255,.25); padding-left:14px; }}
-h1 {{ font-size:{50 if lang!='ru' else 44}px; line-height:1.25; margin:70px 0 22px; }}
+h1 {{ font-size:{44 if lang in ('ru','tr','es','ur') else 50}px; line-height:1.25; margin:70px 0 22px; }}
 p {{ font-size:26px; color:#A7B8C8; line-height:1.5; margin:0; }}
 .url {{ position:absolute; bottom:52px; {'right' if d=='rtl' else 'left'}:64px; font-size:24px; color:#F5A800; direction:ltr; }}
 </style></head><body><div class="img"></div><div class="txt"><div class="brand">{logo}<span>Oxira</span><b>Design</b></div><h1>{title}</h1><p>{sub}</p></div><div class="url">design.oxira.sa</div></body></html>'''

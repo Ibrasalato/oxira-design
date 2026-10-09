@@ -1,5 +1,6 @@
 // "Design my plan" page copy (all languages). Engine: src/scripts/planner/, page: src/components/Planner.astro.
 import type { Lang } from './content';
+import { extra } from './locales';
 import type { Kind, BuildingType } from '../scripts/planner/model';
 
 export const PLAN_TYPES = ['arch', 'facade', 'structural', 'electrical', 'plumbing', 'hvac', 'exterior3d', 'interior', 'permit', 'landscape'] as const;
@@ -284,4 +285,4 @@ const ru: PL = {
   m2: 'м²',
 };
 
-export const pl: Record<Lang, PL> = { ar, en, de, fr, ru };
+export const pl: Record<Lang, PL> = { ar, en, de, fr, ru, es: extra.es.planner, tr: extra.tr.planner, zh: extra.zh.planner, hi: extra.hi.planner, ur: extra.ur.planner };

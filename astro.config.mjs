@@ -7,7 +7,7 @@ export default defineConfig({
   build: { inlineStylesheets: 'auto' },
   vite: { build: { chunkSizeWarningLimit: 1200 } },
   i18n: {
-    locales: ['ar', 'en', 'de', 'fr', 'ru'],
+    locales: ['ar', 'en', 'de', 'fr', 'ru', 'es', 'tr', 'zh', 'hi', 'ur'],
     defaultLocale: 'ar',
     routing: { prefixDefaultLocale: false },
   },

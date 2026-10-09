@@ -1,5 +1,6 @@
 // Shared 3D listing tour page copy (all languages).
 import type { Lang } from './content';
+import { extra } from './locales';
 
 const ar = {
   title: 'جولة ثلاثية الأبعاد',
@@ -133,4 +134,5 @@ const ru: Copy = {
   try: 'Открыть студию',
 };
 
-export const tr: Record<Lang, Copy> = { ar, en, de, fr, ru };
+export type TourText = Copy;
+export const tr: Record<Lang, Copy> = { ar, en, de, fr, ru, es: extra.es.tour, tr: extra.tr.tour, zh: extra.zh.tour, hi: extra.hi.tour, ur: extra.ur.tour };

@@ -49,7 +49,7 @@ export async function initTour() {
 
   // facts
   $('tr-title').textContent = title;
-  $('tr-loc').textContent = [data.district, data.city].filter(Boolean).join(cfg.lang === 'ar' ? '، ' : ', ');
+  $('tr-loc').textContent = [data.district, data.city].filter(Boolean).join(cfg.lang === 'ar' || cfg.lang === 'ur' ? '، ' : ', ');
   const price = Number(String(data.price || '').replace(/[^\d.]/g, ''));
   $('tr-price').textContent = price ? `${fmt(price)} ${cfg.t.sar}` : (data.price || cfg.t.onRequest);
   const area = plan.rooms.reduce((s, r) => s + r.area, 0);

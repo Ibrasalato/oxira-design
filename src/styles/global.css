@@ -16,7 +16,7 @@
   --paper: #F5F7F9;
   --white: #FFFFFF;
 
-  --font: 'IBM Plex Sans', 'Cairo', system-ui, sans-serif;
+  --font: 'IBM Plex Sans', 'Cairo', 'Noto Sans Devanagari', system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
 
   --s-1: .875rem;
   --s0: 1.0625rem;

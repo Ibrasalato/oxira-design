@@ -1,6 +1,7 @@
 // Terms of service, refund policy and the GDPR / PDPL part of the privacy policy.
 // Draft prepared for Oxira; have it reviewed by a lawyer before relying on it.
 import type { Lang } from './content';
+import { extra } from './locales';
 
 type Sec = { h: string; p: string };
 type Page = { title: string; meta: string; sections: Sec[] };
@@ -10,6 +11,7 @@ type Legal = {
   consent: { text: string; accept: string; decline: string; more: string };
 };
 
+export type LegalText = Legal;
 export const legal: Record<Lang, Legal> = {
   ar: {
     updated: 'آخر تحديث: أكتوبر 2026',
@@ -216,4 +218,9 @@ export const legal: Record<Lang, Legal> = {
       { h: 'Сроки хранения', p: 'Ссылки для входа действуют 30 дней. Планировки — до удаления. Заказы и счета — в сроки, установленные законом (до 10 лет).' },
     ],
   },
+  es: extra.es.legal,
+  tr: extra.tr.legal,
+  zh: extra.zh.legal,
+  hi: extra.hi.legal,
+  ur: extra.ur.legal,
 };

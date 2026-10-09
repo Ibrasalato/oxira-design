@@ -1,6 +1,7 @@
 // Copy for /account/ (client accounts, saved plans, order threads, designer portal)
 // and for the "save / share" bar of the plan designer.
 import type { Lang } from './content';
+import { extra } from './locales';
 
 export const STATUS_KEYS = { 'جديد': 'new', 'بانتظار الدفع': 'unpaid', 'مدفوع': 'paid', 'قيد التنفيذ': 'progress', 'تم التسليم': 'delivered', 'ملغي': 'cancelled' } as const;
 type StatusKey = (typeof STATUS_KEYS)[keyof typeof STATUS_KEYS];
@@ -20,6 +21,7 @@ type Copy = {
   err: string;
 };
 
+export type AccountText = Copy;
 export const acc: Record<Lang, Copy> = {
   ar: {
     nav: 'حسابي', title: 'حسابي', meta: 'حسابك في Oxira Design: مخططاتك المحفوظة، طلباتك وحالتها، ورسائلك مع المصمم.',
@@ -131,4 +133,9 @@ export const acc: Record<Lang, Copy> = {
     save: { title: 'Сохраните планировку', sub: 'Храните её в кабинете и открывайте на любом устройстве или поделитесь ссылкой с семьёй или подрядчиком.', name: 'Название', btn: 'Сохранить в кабинете', saved: 'Сохранено в кабинете.', share: 'Ссылка', copy: 'Копировать', copied: 'Скопировано', signIn: 'Войдите, чтобы сохранять планировки', mine: 'Мои планировки', shared: 'Этой планировкой с вами поделились. Ваши изменения останутся на вашем устройстве.', sharedFrom: 'Общая планировка' },
     err: 'Ошибка соединения, попробуйте ещё раз.',
   },
+  es: extra.es.account,
+  tr: extra.tr.account,
+  zh: extra.zh.account,
+  hi: extra.hi.account,
+  ur: extra.ur.account,
 };

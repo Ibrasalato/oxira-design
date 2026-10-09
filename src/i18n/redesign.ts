@@ -1,6 +1,7 @@
 // Room photo redesign page copy (all languages).
 // REDESIGN_PACKS must match the "Price pack" node of the n8n workflow "Oxira Design — Room redesign".
 import type { Lang } from './content';
+import { extra } from './locales';
 
 /** SAR including VAT. */
 export const REDESIGN_PACKS = [
@@ -218,4 +219,5 @@ const ru: Copy = {
   more: { title: 'Нужен дизайн всей квартиры?', body: 'Загрузите план AutoCAD в студию и посмотрите всю квартиру в 3D, или закажите полный дизайн интерьера у нашей команды.', studio: 'Открыть студию' },
 };
 
-export const rd: Record<Lang, Copy> = { ar, en, de, fr, ru };
+export type RedesignText = Copy;
+export const rd: Record<Lang, Copy> = { ar, en, de, fr, ru, es: extra.es.redesign, tr: extra.tr.redesign, zh: extra.zh.redesign, hi: extra.hi.redesign, ur: extra.ur.redesign };

@@ -1,5 +1,6 @@
 // Studio app copy (all languages).
 import type { Lang } from './content';
+import { extra } from './locales';
 
 const ar = {
   title: 'استوديو Oxira Design',
@@ -157,5 +158,5 @@ const ru: S = {
   stats: (w, o, r) => `${w} стен · ${o} проёмов · ${r} комнат`,
 };
 
-export const st: Record<Lang, S> = { ar, en, de, fr, ru };
+export const st: Record<Lang, S> = { ar, en, de, fr, ru, es: extra.es.studio, tr: extra.tr.studio, zh: extra.zh.studio, hi: extra.hi.studio, ur: extra.ur.studio };
 export type StudioText = S;

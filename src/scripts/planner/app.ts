@@ -2,7 +2,7 @@
 import { generate, fromRooms, defaultBrief, totals, dividers, moveDivider, splitRoom, mergeRoom, swapRooms, leaves, geometry, type Brief, type Project, type Floor, type Kind, type Divider } from './model.ts';
 import { floorSvg, toDxf } from './render.ts';
 import { pl, PLAN_TYPES } from '../../i18n/planner';
-import type { Lang } from '../../i18n/content';
+import { isRtl, type Lang } from '../../i18n/content';
 import { isPdf, pdfToImage } from '../pdfImage';
 import { rg } from '../../i18n/region';
 import { acc as accCall, getToken, sharedPlan } from '../../lib/account';
@@ -31,7 +31,7 @@ export function startPlanner(root: HTMLElement) {
   const cfg: Cfg = JSON.parse(root.dataset.cfg!);
   const T = pl[cfg.lang];
   const AR = pl.ar;
-  const rtl = cfg.lang === 'ar';
+  const rtl = isRtl(cfg.lang);
   const $ = <E extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as E;
   const nf = (d: number) => new Intl.NumberFormat(cfg.lang === 'ar' ? 'ar-SA-u-nu-latn' : cfg.lang, { minimumFractionDigits: d, maximumFractionDigits: d });
   const fmt = (n: number, d = 1) => nf(d).format(n);

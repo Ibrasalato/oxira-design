@@ -10,8 +10,10 @@ const { lang, path, langs } = Astro.props;
 const c = t[lang];
 const home = link(lang, '/');
 const year = new Date().getFullYear();
-const mainUrl = CONTACT.main + (lang === 'ar' ? '/' : `/${lang}/`);
-const eventsUrl = 'https://events.oxira.sa' + (lang === 'ar' ? '/' : `/${lang}/`);
+// oxira.sa and events.oxira.sa have ar, en, de, fr and ru; other languages go to English
+const sub = lang === 'ar' ? '/' : ['en', 'de', 'fr', 'ru'].includes(lang) ? `/${lang}/` : '/en/';
+const mainUrl = CONTACT.main + sub;
+const eventsUrl = 'https://events.oxira.sa' + sub;
 import { rd } from '../i18n/redesign';
 import { pl } from '../i18n/planner';
 import { acc } from '../i18n/account';
