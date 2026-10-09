@@ -69,7 +69,7 @@ export const defaultBrief = (): Brief => ({
 export const frontSetback = (streetW: number) => Math.round(Math.min(6, Math.max(2, streetW / 5)) * 10) / 10;
 
 // ------------------------------------------------------------------ tree helpers
-type Ctx = { seq: number };
+type Ctx = { seq: number; variant?: number };
 const nid = (c: Ctx) => 'n' + (c.seq++).toString(36);
 const leaf = (c: Ctx, kind: Kind, unit: string, parent?: string): Leaf => ({ t: 'room', id: nid(c), kind, unit, ...(parent ? { parent } : {}) });
 const split = (c: Ctx, axis: Axis, kids: Node[], w: number[]): Node => (kids.length === 1 ? kids[0] : { t: 'split', id: nid(c), axis, kids, w });
@@ -139,7 +139,7 @@ function stripSides(side: Side, sh: Pick<Shape, 'mode' | 'strips'>, blind: Side[
   return [blind.includes(lo) && !blind.includes(hi) ? hi : lo];
 }
 
-function chooseShape(r: Rect, side: Side, band: number, needLen: number, blind: Side[] = [], items: Item[] = []): Shape {
+function chooseShape(r: Rect, side: Side, band: number, needLen: number, blind: Side[] = [], items: Item[] = [], alt = false): Shape {
   const ns = side === 'S' || side === 'N';
   const Lp = ns ? r.x1 - r.x0 : r.y1 - r.y0; // parallel to the entrance side
   const Ld = ns ? r.y1 - r.y0 : r.x1 - r.x0;
@@ -170,7 +170,10 @@ function chooseShape(r: Rect, side: Side, band: number, needLen: number, blind: 
     for (const sd of stripSides(side, c, blind)) if (blind.includes(sd)) s += c.strips === 2 ? 8 * Math.max(0.2, 1 - service / (tot / 2)) : 8;
     return s;
   };
-  return cands.sort((a, b) => score(a) - score(b))[0];
+  const ranked = cands.map((c) => ({ c, s: score(c) })).sort((a, b) => a.s - b.s);
+  // an alternative layout takes the runner-up when it is still reasonable
+  if (alt && ranked[1] && ranked[1].s < ranked[0].s + 4 && ranked[1].s < 12) return ranked[1].c;
+  return ranked[0].c;
 }
 
 const SMALL = new Set<Kind>(['wc', 'bath', 'store', 'laundry', 'dress']);
@@ -212,7 +215,7 @@ function stripNode(c: Ctx, axis: Axis, items: Item[], unit: string, reverse: boo
     const subW = Math.max(col.main.area < 14 ? 1.4 : 1.6, Math.min(2.8, subArea / depth));
     const parts: { n: Node; w: number }[] = col.kids.map((k) => { const l = leaf(c, k.kind, unit); ids.set(k, l); return { n: l, w: k.area }; });
     const free = subW * depth - subArea;
-    if (free > 1.6) {
+    if (free > Math.max(1.6, 1.3 * subW)) {
       const filler = ['master', 'bedroom', 'guest'].includes(col.main.kind) && !col.kids.some((k) => k.kind === 'dress') ? 'dress' : 'store';
       const l = leaf(c, filler, unit, filler === 'dress' ? m.id : undefined);
       parts.push({ n: l, w: free });
@@ -233,7 +236,7 @@ function genUnit(c: Ctx, r: Rect, prog: Prog, o: UnitOpts): Node {
   const band = o.band ?? (o.stair ? STAIR_W : 1.7);
   const needLen = (o.stair ? STAIR_LEN : 0) + (o.lift ? LIFT_LEN : 0) + 2;
   const blind = o.blind || [];
-  const sh = chooseShape(r, side, band, needLen, blind, prog.items);
+  const sh = chooseShape(r, side, band, needLen, blind, prog.items, !!((c.variant || 0) & 1));
   const ns = side === 'S' || side === 'N';
   // axes in world terms
   const bandAxis: Axis = sh.mode === 'para' ? (ns ? 'x' : 'y') : (ns ? 'y' : 'x');
@@ -417,8 +420,12 @@ function apartmentProg(b: Brief['bld']): Prog {
 }
 
 // ------------------------------------------------------------------ project generator
-export function generate(brief: Brief): Project {
-  const c: Ctx = { seq: 1 };
+/**
+ * variant 0 is the recommended layout; 1 takes the runner-up arrangement of halls and room strips,
+ * 2 mirrors the plan, 3 does both. All floors of one variant share the same stair position.
+ */
+export function generate(brief: Brief, variant = 0): Project {
+  const c: Ctx = { seq: 1, variant };
   const warnings: string[] = [];
   const L = brief.land;
   const sb = brief.setback;
@@ -559,6 +566,10 @@ export function generate(brief: Brief): Project {
         : split(c, 'x', [leaf(c, 'terrace', 'R'), core(false, 'R', 'R'), rightNode], [leftR.x1 - leftR.x0, coreW, rightR.x1 - rightR.x0]);
       floors.push({ id: nid(c), key: 'roof', level: 2, repeat: 1, rect: foot, root });
     }
+  }
+  if (variant & 2) {
+    // mirror left/right within each floor's own rectangle
+    for (const f of floors) f.root = mirrorX(c, f.root);
   }
   const p: Project = { brief, land, build, floors, seq: c.seq, warnings };
   for (const f of floors) checkFloor(f, warnings);
@@ -898,6 +909,17 @@ export function geometry(f: Floor, ground: boolean, topOfStair = false): Geometr
       extDoors.push({ kind: 'door', axis: 'y', c: e.c, t0, t1: t0 + w, th: T_EXT, into: 1, hingeAt0: true, main: true });
       unitsWithEntry.add(l.unit);
     }
+    // plans read from a drawing may have no hall on the street side: enter through the main room there
+    for (const u of new Set(ls.map((l) => l.unit))) {
+      if (u === 'C' || u === 'P' || unitsWithEntry.has(u) || ls.some((l) => l.unit === u && (l.kind === 'shop'))) continue;
+      const cand2 = ls.filter((l) => l.unit === u && ['living', 'majlis', 'dining', 'ladies', 'office'].includes(l.kind))
+        .map((l) => ({ l, e: exteriorEdges(rect(l), F).find((x) => x.side === 'S') })).filter((x) => x.e && x.e.t1 - x.e.t0 > 1.4);
+      const pick = cand2[0];
+      if (!pick) continue;
+      const w = 1.2, t0 = (pick.e!.t0 + pick.e!.t1) / 2 - w / 2;
+      extDoors.push({ kind: 'door', axis: 'y', c: pick.e!.c, t0, t1: t0 + w, th: T_EXT, into: 1, hingeAt0: true, main: true });
+      unitsWithEntry.add(u);
+    }
     for (const l of ls) {
       if (l.kind !== 'shop' && l.kind !== 'parking' && l.kind !== 'garage') continue;
       const e = exteriorEdges(rect(l), F).find((x) => x.side === 'S');
@@ -1038,4 +1060,77 @@ export function totals(p: Project) {
   const landArea = (p.land.x1 - p.land.x0) * (p.land.y1 - p.land.y0);
   const ground = per.find((x) => x.floor.level === 0);
   return { per, built, landArea, coverage: ground ? ground.gross / landArea : 0 };
+}
+
+// ------------------------------------------------------------------ import (rooms read from a drawing)
+export type RoomRect = { name?: string; type?: string; x: number; y: number; w: number; h: number };
+
+/**
+ * Builds an editable floor from loose room rectangles (for example read from a photo of a plan):
+ * coordinates are snapped, then the rectangle is cut recursively along lines that no room crosses.
+ * Where no clean cut exists the room that blocks the longest cut is clipped, so the result always
+ * tiles the outline and stays editable like a generated plan.
+ */
+export function fromRooms(input: RoomRect[], width: number, depth: number, brief: Brief): Project {
+  const c: Ctx = { seq: 1 };
+  const snap = (v: number) => Math.round(v * 20) / 20;
+  const W = Math.max(3, snap(width)), D = Math.max(3, snap(depth));
+  type R = Rect & { kind: Kind; name?: string };
+  const kinds = new Set<string>(KINDS);
+  let rs: R[] = input
+    .map((r) => ({ x0: snap(Math.max(0, r.x)), y0: snap(Math.max(0, r.y)), x1: snap(Math.min(W, r.x + r.w)), y1: snap(Math.min(D, r.y + r.h)), kind: (kinds.has(String(r.type)) ? r.type : 'bedroom') as Kind, name: r.name ? String(r.name).slice(0, 40) : undefined }))
+    .filter((r) => r.x1 - r.x0 > 0.4 && r.y1 - r.y0 > 0.4);
+  const area = (r: Rect) => (r.x1 - r.x0) * (r.y1 - r.y0);
+  const build = (box: Rect, list: R[], depthLeft: number): Node => {
+    const inside = list
+      .map((r) => ({ ...r, x0: Math.max(r.x0, box.x0), y0: Math.max(r.y0, box.y0), x1: Math.min(r.x1, box.x1), y1: Math.min(r.y1, box.y1) }))
+      .filter((r) => r.x1 - r.x0 > 0.3 && r.y1 - r.y0 > 0.3);
+    if (!inside.length) return leaf(c, 'hall', 'A');
+    if (inside.length === 1 || depthLeft <= 0) {
+      const big = inside.sort((a, b) => area(b) - area(a))[0];
+      const l = leaf(c, big.kind, 'A');
+      if (big.name) l.name = big.name;
+      return l;
+    }
+    // candidate cuts: room edges inside the box; score = how much room area the cut would slice
+    let best: { axis: Axis; at: number; cost: number } | null = null;
+    for (const axis of ['x', 'y'] as Axis[]) {
+      const lo = axis === 'x' ? box.x0 : box.y0, hi = axis === 'x' ? box.x1 : box.y1;
+      const cuts = new Set<number>();
+      for (const r of inside) for (const v of axis === 'x' ? [r.x0, r.x1] : [r.y0, r.y1]) if (v > lo + 0.5 && v < hi - 0.5) cuts.add(v);
+      for (const at of cuts) {
+        let cost = 0;
+        for (const r of inside) {
+          const a0 = axis === 'x' ? r.x0 : r.y0, a1 = axis === 'x' ? r.x1 : r.y1;
+          if (a0 < at - 0.05 && a1 > at + 0.05) cost += Math.min(at - a0, a1 - at) * (axis === 'x' ? r.y1 - r.y0 : r.x1 - r.x0);
+        }
+        if (!best || cost < best.cost - 1e-6 || (Math.abs(cost - best.cost) < 1e-6 && Math.abs(at - (lo + hi) / 2) < Math.abs(best.at - (lo + hi) / 2))) best = { axis, at, cost };
+      }
+    }
+    if (!best) {
+      const big = inside.sort((a, b) => area(b) - area(a))[0];
+      const l = leaf(c, big.kind, 'A');
+      if (big.name) l.name = big.name;
+      return l;
+    }
+    const a: Rect = best.axis === 'x' ? { ...box, x1: best.at } : { ...box, y1: best.at };
+    const b: Rect = best.axis === 'x' ? { ...box, x0: best.at } : { ...box, y0: best.at };
+    const na = build(a, inside, depthLeft - 1), nb = build(b, inside, depthLeft - 1);
+    const wa = best.axis === 'x' ? a.x1 - a.x0 : a.y1 - a.y0, wb = best.axis === 'x' ? b.x1 - b.x0 : b.y1 - b.y0;
+    // flatten same-axis chains so dividers stay simple to drag
+    const kids: Node[] = [], ws: number[] = [];
+    for (const [n, w] of [[na, wa], [nb, wb]] as [Node, number][]) {
+      if (n.t === 'split' && n.axis === best.axis) { const t = n.w.reduce((q, x) => q + x, 0); n.kids.forEach((k, i) => { kids.push(k); ws.push((n.w[i] / t) * w); }); }
+      else { kids.push(n); ws.push(w); }
+    }
+    return { t: 'split', id: nid(c), axis: best.axis, kids, w: ws };
+  };
+  const sb = brief.setback;
+  const land: Rect = { x0: 0, y0: 0, x1: W + 2 * sb.side, y1: D + sb.front + sb.back };
+  const foot: Rect = { x0: sb.side, y0: sb.front, x1: sb.side + W, y1: sb.front + D };
+  rs = rs.map((r) => ({ ...r, x0: r.x0 + foot.x0, x1: r.x1 + foot.x0, y0: r.y0 + foot.y0, y1: r.y1 + foot.y0 }));
+  const root = build(foot, rs, 40);
+  const b2: Brief = { ...brief, land: { ...brief.land, w: land.x1, d: land.y1 } };
+  const floors: Floor[] = [{ id: nid(c), key: 'ground', level: 0, repeat: 1, rect: foot, root }];
+  return { brief: b2, land, build: { x0: foot.x0, y0: foot.y0, x1: foot.x1, y1: foot.y1 }, floors, seq: c.seq, warnings: [] };
 }

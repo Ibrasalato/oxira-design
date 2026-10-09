@@ -16,7 +16,7 @@ const { lang } = Astro.props;
 const p = pl[lang];
 const d = defaultBrief();
 d.setback.front = frontSetback(d.land.streetW);
-const cfg = { lang, order: import.meta.env.PUBLIC_ORDER_ENDPOINT || N8N.order, studio: link(lang, '/studio/'), whatsapp: CONTACT.whatsapp };
+const cfg = { lang, ai: N8N.planAi, order: import.meta.env.PUBLIC_ORDER_ENDPOINT || N8N.order, studio: link(lang, '/studio/'), whatsapp: CONTACT.whatsapp };
 const num = (name: string, label: string, value: number, min: number, max: number, step = 1, unit = '') => ({ name, label, value, min, max, step, unit });
 const landFields = [num('land.w', p.land.w, d.land.w, 6, 300, 0.5, p.land.m), num('land.d', p.land.d, d.land.d, 6, 300, 0.5, p.land.m)];
 const villaNums = [
@@ -52,6 +52,12 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
     <!-- ===================================================== new plan -->
     <div class="pl-grid" data-only="new">
       <form class="pl-panel" id="pl-brief" autocomplete="off" onsubmit="return false">
+        <div class="pl-ai">
+          <label for="pl-ai-text"><Icon name="spark" /><b>{p.ai.title}</b></label>
+          <textarea id="pl-ai-text" rows="3" maxlength="2000" placeholder={p.ai.ph}></textarea>
+          <button type="button" class="btn btn-navy pl-wide" id="pl-ai-go"><Icon name="spark" />{p.ai.btn}</button>
+          <p class="pl-ai-msg" id="pl-ai-msg" role="status" aria-live="polite" hidden></p>
+        </div>
         <fieldset class="pl-sec">
           <legend><b>1</b>{p.land.title}</legend>
           <div class="pl-region">
@@ -172,6 +178,10 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
             <p class="pl-swapnote" id="pl-swapnote" hidden>{p.editor.swapHint} <button type="button" class="pl-link" id="pl-swap-x">{p.editor.cancel}</button></p>
           </div>
         </div>
+        <div class="pl-variants" id="pl-variants" hidden>
+          <span>{p.variants.title}</span>
+          <div class="pl-var-row" id="pl-var-row"></div>
+        </div>
         <p class="pl-hint"><Icon name="pencil" />{p.editor.hint}</p>
         <div class="pl-warn" id="pl-warn" hidden></div>
 
@@ -198,6 +208,16 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
         </label>
         <ul class="pl-files" id="pl-file-list"></ul>
         <p class="pl-small pl-studio-hint" id="pl-dxf-hint" hidden><Icon name="cube" /><a href="#" id="pl-dxf-open">{p.upload.openStudio}</a></p>
+        <div class="pl-import">
+          <b><Icon name="spark" />{p.imp.title}</b>
+          <p class="pl-small">{p.imp.hint}</p>
+          <div class="pl-import-row">
+            <label class="pl-f"><span>{p.imp.width}</span><span class="pl-unit"><input type="number" id="pl-imp-w" min="3" max="1000" step="0.1" inputmode="decimal" dir="ltr" /><i class="pl-u">{p.land.m}</i></span></label>
+            <button type="button" class="btn btn-navy" id="pl-imp-go"><Icon name="spark" />{p.imp.btn}</button>
+          </div>
+          <p class="pl-ai-msg" id="pl-imp-msg" role="status" aria-live="polite" hidden></p>
+          <p class="pl-small">{p.imp.note}</p>
+        </div>
         <h3 class="pl-h3 pl-mt">{p.upload.state}</h3>
         <div class="pl-chips">{STATES.map((k, i) => <label class="pl-chip"><input type="radio" name="state" value={k} checked={i === 1} /><span>{p.upload.states[k]}</span></label>)}</div>
       </div>
@@ -257,6 +277,25 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
 
 <style is:global>
   .pl-hero { padding-bottom: 1.25rem; }
+  .pl-ai { display: grid; gap: .6rem; padding: 1.1rem 1.15rem; border-radius: var(--radius); background: linear-gradient(135deg, #0A253E, #10375A); color: #fff; }
+  .pl-ai label { display: flex; align-items: center; gap: .5rem; font-size: 1.02rem; }
+  .pl-ai label .ic { width: 1.2rem; height: 1.2rem; color: var(--amber); }
+  .pl-ai textarea { font: 500 .98rem/1.55 var(--font); border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; padding: .7rem .8rem; resize: vertical; }
+  .pl-ai textarea::placeholder { color: var(--muted-on-navy); }
+  .pl-ai .btn { background: var(--amber); color: var(--navy); }
+  .pl-ai-msg { font-size: .9rem; line-height: 1.6; padding: .55rem .75rem; border-radius: 10px; background: rgba(255,255,255,.1); }
+  .pl-import .pl-ai-msg { background: var(--blue-soft); color: var(--navy); margin-top: .6rem; }
+  .pl-ai-msg.is-err { background: #FDECEC; color: #9B1C1C; }
+  .pl-import { margin-top: 1.2rem; padding: 1rem; border-radius: 14px; border: 1.5px solid var(--amber); background: #FFFBF0; }
+  .pl-import > b { display: flex; align-items: center; gap: .45rem; }
+  .pl-import > b .ic { width: 1.1rem; height: 1.1rem; color: var(--amber-deep); }
+  .pl-import-row { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: end; margin-top: .6rem; }
+  .pl-variants { display: grid; gap: .45rem; }
+  .pl-variants > span { font-size: .86rem; font-weight: 700; color: var(--muted); }
+  .pl-var-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
+  .pl-var-row button { padding: .3rem; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; display: grid; gap: .2rem; font: 600 .78rem var(--font); color: var(--muted); }
+  .pl-var-row button[aria-pressed='true'] { border-color: var(--navy); color: var(--navy); box-shadow: 0 0 0 2px rgba(10,37,62,.1); }
+  .pl-var-row svg { width: 100%; height: 4.8rem; display: block; }
   .pl-steps { list-style: none; padding: 0; margin: 1.75rem 0 0; display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; color: var(--muted); }
   .pl-steps li { display: flex; align-items: center; gap: .55rem; }
   .pl-steps b, .pl-sec legend b, .pl-h3 b { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-size: .9rem; flex: none; }

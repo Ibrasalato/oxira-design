@@ -1,5 +1,5 @@
 // Plan designer page: brief form → concept plan → editing → request to the team.
-import { generate, defaultBrief, totals, dividers, moveDivider, splitRoom, mergeRoom, swapRooms, leaves, geometry, type Brief, type Project, type Floor, type Kind, type Divider } from './model.ts';
+import { generate, fromRooms, defaultBrief, totals, dividers, moveDivider, splitRoom, mergeRoom, swapRooms, leaves, geometry, type Brief, type Project, type Floor, type Kind, type Divider } from './model.ts';
 import { floorSvg, toDxf } from './render.ts';
 import { pl, PLAN_TYPES } from '../../i18n/planner';
 import type { Lang } from '../../i18n/content';
@@ -17,9 +17,9 @@ const PROGRAMME: Record<Programme, { villa: Partial<Brief['villa']>; bld: Partia
 };
 const LEN = ['land.w', 'land.d', 'land.streetW', 'setback.front', 'setback.back', 'setback.side'];
 
-type Cfg = { lang: Lang; order: string; studio: string; whatsapp: string };
+type Cfg = { lang: Lang; ai: string; order: string; studio: string; whatsapp: string };
 type Extras = { planTypes: string[]; formats: string[]; facade: string };
-type Saved = { v: 1; brief: Brief; extras: Extras; floors: Floor[]; seq: number; edited: boolean; path: 'new' | 'upload' };
+type Saved = { v: 1; brief: Brief; extras: Extras; floors: Floor[]; seq: number; edited: boolean; path: 'new' | 'upload'; variant?: number; imported?: boolean };
 
 const KEY = 'ox-plan-v1';
 const MAX = 15 * 1048576;
@@ -44,6 +44,8 @@ export function startPlanner(root: HTMLElement) {
   let path: 'new' | 'upload' = 'new';
   const undo: string[] = [];
   let sbTouched = false;
+  let variant = 0;
+  let imported = false; // the plan came from a drawing (not from the generator)
   let region: Region = detectRegion(cfg.lang);
   let units: Units = 'm'; // the form is rendered in metres; applyRegion / restore switch it
   const u2 = () => (units === 'ft' ? 'ft²' : T.m2);
@@ -188,7 +190,8 @@ export function startPlanner(root: HTMLElement) {
   const scheduleGen = () => { clearTimeout(genTimer); genTimer = window.setTimeout(() => regenerate(false), 250); };
 
   function regenerate(scroll = true) {
-    project = generate(readBrief());
+    imported = false;
+    project = generate(readBrief(), variant);
     floorIdx = Math.min(floorIdx, Math.max(0, project.floors.length - 1));
     selected = null; swapFrom = null; edited = false; undo.length = 0;
     $('pl-regen').hidden = true;
@@ -245,8 +248,43 @@ export function startPlanner(root: HTMLElement) {
       stat(T.editor.stats.rooms, String(out.geo.rooms.filter((r) => !['stair', 'lift', 'terrace', 'void'].includes(r.leaf.kind)).length));
     $<HTMLButtonElement>('pl-undo').disabled = !undo.length;
     renderRoomPanel();
+    renderVariants();
   }
 
+  /** Small previews of the alternative layouts for the current settings. */
+  let varKey = '';
+  function renderVariants() {
+    const box = $('pl-variants');
+    if (!project || imported) { box.hidden = true; return; }
+    const brief = project.brief;
+    const key = JSON.stringify(brief) + '|' + variant + '|' + units;
+    if (key === varKey) return;
+    varKey = key;
+    const row = $('pl-var-row');
+    row.innerHTML = '';
+    const seen = new Set<string>();
+    let n = 0;
+    for (const v of [0, 1, 2, 3]) {
+      const q = generate(brief, v);
+      const sig = JSON.stringify(q.floors.map((f) => f.root)).replace(/"id":"[^"]+"/g, '').replace(/"parent":"[^"]+"/g, '');
+      if (!q.floors.length || seen.has(sig)) continue;
+      seen.add(sig);
+      n++;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(v === variant));
+      b.innerHTML = floorSvg(q, q.floors[0], { names, fmt, m2: T.m2, street: T.street, site: false, edit: false }).svg + `<span>${T.variants.n.replace('{n}', String(n))}</span>`;
+      b.querySelectorAll('text').forEach((t) => t.remove());
+      b.addEventListener('click', () => {
+        if (v === variant) return;
+        if (edited && !confirm(T.variants.ask)) return;
+        variant = v;
+        regenerate(false);
+      });
+      row.appendChild(b);
+    }
+    box.hidden = n < 2;
+  }
   function renderRoomPanel() {
     const panel = $('pl-room');
     const f = project?.floors[floorIdx];
@@ -459,7 +497,7 @@ export function startPlanner(root: HTMLElement) {
   // ------------------------------------------------------------ storage
   function save() {
     if (!project) return;
-    const s: Saved = { v: 1, brief: project.brief, extras: readExtras(), floors: project.floors, seq: project.seq, edited, path };
+    const s: Saved = { v: 1, brief: project.brief, extras: readExtras(), floors: project.floors, seq: project.seq, edited, path, variant, imported };
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
   }
   function restore(): boolean {
@@ -471,8 +509,10 @@ export function startPlanner(root: HTMLElement) {
     document.querySelectorAll<HTMLSelectElement>('[data-region-select]').forEach((x) => { x.value = region.id; });
     writeBrief(s.brief, s.extras || { planTypes: ['arch'], formats: ['pdf'], facade: 'none' });
     syncForm();
-    project = generate(s.brief);
-    if (s.edited && Array.isArray(s.floors) && s.floors.length) { project.floors = s.floors; project.seq = s.seq || project.seq; }
+    variant = s.variant || 0;
+    imported = !!s.imported;
+    project = generate(s.brief, variant);
+    if ((s.edited || s.imported) && Array.isArray(s.floors) && s.floors.length) { project.floors = s.floors; project.seq = s.seq || project.seq; }
     edited = !!s.edited;
     $('pl-regen').hidden = !edited;
     setPath(s.path === 'upload' ? 'upload' : 'new', false);
@@ -619,6 +659,108 @@ export function startPlanner(root: HTMLElement) {
     } finally {
       btn.disabled = false;
       btn.textContent = T.form.submit;
+    }
+  });
+
+  // ------------------------------------------------------------ AI: description → settings
+  const aiMsg = (el: HTMLElement, text: string, err = false) => { el.hidden = !text; el.textContent = text; el.classList.toggle('is-err', err); };
+  async function callAi(body: object): Promise<any> {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 150000);
+    try {
+      const res = await fetch(cfg.ai, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctl.signal });
+      return await res.json();
+    } finally { clearTimeout(timer); }
+  }
+  $('pl-ai-go').addEventListener('click', async () => {
+    const text = $<HTMLTextAreaElement>('pl-ai-text').value.trim();
+    const msg = $('pl-ai-msg');
+    if (text.length < 4) { $('pl-ai-text').focus(); return; }
+    if (edited && !confirm(T.regenAsk)) return;
+    const btn = $<HTMLButtonElement>('pl-ai-go');
+    btn.disabled = true;
+    aiMsg(msg, T.ai.busy);
+    try {
+      const out = await callAi({ kind: 'brief', text, lang: cfg.lang, region: region.id, brief: readBrief() });
+      if (!out?.success) { aiMsg(msg, out?.reason === 'limit' ? T.ai.limit : T.ai.err, true); return; }
+      const b = readBrief();
+      const pt = out.patch || {};
+      const TYPES = ['villa', 'duplex', 'building', 'mixed', 'istiraha'];
+      if (TYPES.includes(pt.type)) b.type = pt.type;
+      const num = (v: unknown) => (typeof v === 'number' && isFinite(v) ? v : undefined);
+      if (pt.land) for (const k of ['w', 'd', 'streets', 'streetW'] as const) { const v = num(pt.land[k]); if (v !== undefined) (b.land as any)[k] = v; }
+      for (const grp of ['villa', 'bld'] as const) {
+        if (!pt[grp] || typeof pt[grp] !== 'object') continue;
+        for (const [k, v] of Object.entries(pt[grp])) {
+          if (!(k in b[grp]) && k !== 'garage') continue;
+          if (typeof v === 'boolean' || typeof v === 'number' || (typeof v === 'string' && v.length < 20)) (b[grp] as any)[k] = v;
+        }
+      }
+      const x = readExtras();
+      if (Array.isArray(pt.planTypes)) x.planTypes = pt.planTypes.filter((k: string) => (PLAN_TYPES as readonly string[]).includes(k));
+      if (typeof pt.facade === 'string') x.facade = pt.facade;
+      // the plot changed: setbacks follow the country again
+      const bld = b.type === 'building' || b.type === 'mixed';
+      const sbr = (bld && region.bldSetback) || region.setback;
+      if (!sbTouched) b.setback = { front: sbr.front(b.land.streetW), side: sbr.side, back: sbr.back };
+      writeBrief(b, x);
+      syncForm();
+      variant = 0;
+      regenerate(true);
+      aiMsg(msg, out.reply || '');
+    } catch {
+      aiMsg(msg, T.ai.err, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ------------------------------------------------------------ AI: drawing → editable plan
+  async function imageFor(f: File): Promise<string> {
+    if (isPdf(f)) return pdfToImage(f, 1800);
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(f);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const ctx = c.getContext('2d')!;
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image')); };
+      img.src = url;
+    });
+  }
+  $('pl-imp-go').addEventListener('click', async () => {
+    const msg = $('pl-imp-msg');
+    const f = lists.plan.find((p) => isPdf(p.file) || /^image\/(png|jpe?g|webp)$/.test(p.file.type))?.file;
+    if (!f) { aiMsg(msg, T.imp.noFile, true); return; }
+    const btn = $<HTMLButtonElement>('pl-imp-go');
+    btn.disabled = true;
+    aiMsg(msg, T.imp.busy);
+    try {
+      const image = await imageFor(f);
+      const wIn = parseFloat($<HTMLInputElement>('pl-imp-w').value);
+      const out = await callAi({ kind: 'image', image, knownWidth: isFinite(wIn) ? lenOut(wIn, units) : 0, lang: cfg.lang, region: region.id });
+      if (!out?.success) { aiMsg(msg, out?.reason === 'limit' ? T.ai.limit : T.imp.err, true); return; }
+      project = fromRooms(out.rooms || [], out.width, out.depth, readBrief());
+      writeBrief(project.brief, readExtras());
+      syncForm();
+      imported = true; edited = true; floorIdx = 0; selected = null; swapFrom = null; undo.length = 0;
+      setPath('new');
+      $('pl-regen').hidden = false;
+      render(); save();
+      aiMsg($('pl-ai-msg'), `${T.imp.done}${out.notes ? ' ' + out.notes : ''}`);
+      $('pl-canvas').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      aiMsg(msg, T.imp.done);
+    } catch {
+      aiMsg(msg, T.imp.err, true);
+    } finally {
+      btn.disabled = false;
     }
   });
 

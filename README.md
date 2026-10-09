@@ -65,6 +65,7 @@ Everything runs in the visitor's browser; nothing is uploaded unless they order 
 | `POST /webhook/oxira-design-order` | Order form and the plan page (`package = plan`, quote only), multipart with files. Saves to `oxira_design_orders`, emails info@oxira.sa with attachments, confirms to the client. Quick package → Moyasar invoice → `{ payUrl }` |
 | `POST /webhook/oxira-design-moyasar-callback` | Moyasar callback for design invoices: confirms with Moyasar, marks the order paid, emails team and client |
 | `POST /webhook/oxira-design-payment-status` | `{ orderId }` → payment status |
+| `POST /webhook/oxira-plan-ai` | Workflow "Oxira Design — Plan AI" (`n8n/oxira-design-ai.workflow.ts`): Claude turns a description into plan settings (`kind: brief`) or reads a plan image into room rectangles (`kind: image`). Daily limits per IP |
 | `POST /webhook/oxira-design-render` | AI render from a studio snapshot, 3 per visitor per day and a global daily cap, logged in `oxira_design_renders` |
 
 Allowed origins: `https://design.oxira.sa`, `https://ibrasalato.github.io`, `http://localhost:4321`.

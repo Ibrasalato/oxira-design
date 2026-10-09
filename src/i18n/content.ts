@@ -24,6 +24,7 @@ export const N8N = {
   finishing: HOOK + 'oxira-design-finishing',
   listing: HOOK + 'oxira-design-listing',
   listingGet: HOOK + 'oxira-design-listing-get',
+  planAi: HOOK + 'oxira-plan-ai',
 };
 
 export const CONTACT = {
