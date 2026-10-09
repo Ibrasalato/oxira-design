@@ -1,0 +1,203 @@
+---
+// Service / region landing page (Arabic and English only).
+import Base from '../layouts/Base.astro';
+import Icon from './Icon.astro';
+import { t } from '../i18n/content';
+import { rd } from '../i18n/redesign';
+import { GUIDES, GUIDE_LANGS, guideCopy, guidePath, HUB_PATH, ui, type GuideLang, type GuideSlug } from '../i18n/guides';
+import { guideLd } from '../lib/guideLd';
+import { link } from '../lib/routes';
+
+interface Props { lang: GuideLang; slug: GuideSlug }
+const { lang, slug } = Astro.props;
+const meta = GUIDES.find((g) => g.slug === slug)!;
+const c = guideCopy[lang][slug];
+const u = ui[lang];
+const path = guidePath(slug);
+const tools = {
+  studio: { href: link(lang, '/studio/'), label: t[lang].cta.studio, icon: 'upload' },
+  redesign: { href: link(lang, '/redesign/'), label: rd[lang].nav, icon: 'spark' },
+};
+const primary = tools[meta.primary];
+const secondary = meta.secondary ? tools[meta.secondary] : null;
+const related = meta.related.map((s) => GUIDES.find((g) => g.slug === s)!);
+const ld = guideLd(Astro.site!, lang, meta);
+---
+<Base lang={lang} path={path} title={c.title} description={c.description} langs={GUIDE_LANGS} ld={ld}>
+  <section class="page-hero gd-hero">
+    <div class="wrap">
+      <nav class="bc" aria-label={u.breadcrumb}>
+        <ol>
+          <li><a href={link(lang, '/')}>{u.home}</a></li>
+          <li><a href={link(lang, HUB_PATH)}>{u.hub}</a></li>
+          <li aria-current="page">{c.nav}</li>
+        </ol>
+      </nav>
+      <p class="label">{c.kicker}</p>
+      <h1>{c.h1}</h1>
+      <p class="lead">{c.lead}</p>
+      <div class="gd-cta">
+        <a class="btn btn-amber" href={primary.href}><Icon name={primary.icon} />{primary.label}</a>
+        {secondary && <a class="btn btn-ghost" href={secondary.href}><Icon name={secondary.icon} />{secondary.label}</a>}
+        <button type="button" class="btn btn-ghost" data-open-chat><Icon name="bot" />{t[lang].cta.chat}</button>
+      </div>
+      {meta.primary === 'studio' && <p class="gd-note"><Icon name="check" />{u.note}</p>}
+      <dl class="gd-facts">
+        {c.facts.map(([a, b]) => <div><dt>{a}</dt><dd>{b}</dd></div>)}
+      </dl>
+    </div>
+  </section>
+
+  <section class="section-tight gd-main">
+    <div class="wrap gd-body">
+      <article class="gd-art">
+        {c.sections.map((s, i) => (
+          <section id={`s${i}`} class="gd-sec">
+            <h2>{s.h}</h2>
+            {s.p?.map((x) => <p>{x}</p>)}
+            {s.ul && <ul class="gd-ul">{s.ul.map((x) => <li><Icon name="check" /><span>{x}</span></li>)}</ul>}
+            {s.steps && (
+              <ol class="gd-steps">
+                {s.steps.map((st, k) => <li><span class="gd-n">{k + 1}</span><div><h3>{st.t}</h3><p>{st.d}</p></div></li>)}
+              </ol>
+            )}
+            {s.tip && <p class="gd-tip">{s.tip}</p>}
+          </section>
+        ))}
+      </article>
+      <aside class="gd-aside">
+        <div class="gd-card">
+          <p class="gd-card-t">{c.ctaTitle}</p>
+          <p>{c.ctaText}</p>
+          <a class="btn btn-amber" href={primary.href}>{primary.label}</a>
+        </div>
+        <nav class="gd-toc" aria-label={u.onThisPage}>
+          <p>{u.onThisPage}</p>
+          <ol>
+            {c.sections.map((s, i) => <li><a href={`#s${i}`}>{s.h}</a></li>)}
+            <li><a href="#faq">{u.faq}</a></li>
+          </ol>
+        </nav>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section-tight bg-paper" id="faq">
+    <div class="wrap gd-faq">
+      <div class="sh"><p class="label">{c.nav}</p><h2>{u.faq}</h2></div>
+      <div class="faq-list">
+        {c.faq.map((f) => <details><summary>{f.q}</summary><p>{f.a}</p></details>)}
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight">
+    <div class="wrap">
+      <div class="sh-row">
+        <div class="sh"><p class="label">{u.related}</p></div>
+        <a class="more" href={link(lang, HUB_PATH)}>{u.allServices}</a>
+      </div>
+      <ul class="gd-cards">
+        {related.map((g) => (
+          <li>
+            <a href={link(lang, guidePath(g.slug))}>
+              <Icon name={g.icon} />
+              <h3>{guideCopy[lang][g.slug].nav}</h3>
+              <p>{guideCopy[lang][g.slug].card}</p>
+              <span class="more">{u.open}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section-tight bg-navy">
+    <div class="wrap gd-final">
+      <div class="sh"><h2>{c.ctaTitle}</h2><p>{c.ctaText}</p></div>
+      <div class="gd-cta">
+        <a class="btn btn-amber" href={primary.href}><Icon name={primary.icon} />{primary.label}</a>
+        {secondary && <a class="btn btn-ghost-light" href={secondary.href}>{secondary.label}</a>}
+        <a class="btn btn-ghost-light" href={`${link(lang, '/')}#order`}>{t[lang].nav.contact}</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .gd-hero { background: radial-gradient(70% 60% at 85% 0%, var(--blue-soft), transparent 70%), #fff; padding-bottom: clamp(2rem, 4vw, 3rem); }
+  .gd-hero h1 { font-size: var(--s4); max-width: 22ch; margin-top: .6rem; }
+  .bc ol { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; font-size: .9rem; color: var(--muted); margin-bottom: 1.5rem; }
+  .bc li + li::before { content: '/'; margin-inline-end: .4rem; opacity: .5; }
+  .bc a { color: var(--muted); text-decoration: none; }
+  .bc a:hover { color: var(--ink); text-decoration: underline; }
+  .bc [aria-current] { color: var(--ink); font-weight: 600; }
+  .gd-cta { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+  .gd-cta :global(.ic) { width: 20px; height: 20px; }
+  .gd-note { display: flex; gap: .5rem; align-items: flex-start; margin-top: 1rem; font-size: .92rem; color: var(--muted); }
+  .gd-note :global(.ic) { width: 18px; height: 18px; color: #0B8A6E; flex: none; margin-top: .25rem; }
+  .gd-facts { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; margin: 2rem 0 0; padding-top: 1.5rem; border-top: 1px solid var(--line); max-width: 46rem; }
+  .gd-facts dt { font-size: 1.35rem; font-weight: 700; color: var(--navy); }
+  .gd-facts dd { margin: 0; color: var(--muted); font-size: .92rem; }
+
+  .gd-main { padding-top: clamp(2rem, 4vw, 3rem); }
+  .gd-body { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: clamp(2rem, 5vw, 4rem); align-items: start; }
+  .gd-art { display: grid; gap: clamp(2.5rem, 5vw, 3.5rem); max-width: 46rem; }
+  .gd-sec { scroll-margin-top: 96px; }
+  .gd-sec h2 { font-size: var(--s3); margin-bottom: 1rem; }
+  .gd-sec > p { color: var(--muted); font-size: 1.08rem; }
+  .gd-sec > p + p { margin-top: .9rem; }
+  .gd-sec > p + .gd-ul { margin-top: 1rem; }
+  .gd-ul { list-style: none; display: grid; gap: .7rem; }
+  .gd-ul li { display: flex; gap: .6rem; align-items: flex-start; }
+  .gd-ul :global(.ic) { width: 20px; height: 20px; flex: none; margin-top: .35rem; color: #0B8A6E; }
+  .gd-steps { list-style: none; display: grid; gap: .9rem; }
+  .gd-steps li { display: flex; gap: 1rem; align-items: flex-start; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem 1.4rem; }
+  .gd-n { display: inline-grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: 11px; background: var(--amber); color: var(--navy); font-weight: 700; }
+  .gd-steps h3 { font-size: 1.1rem; margin-bottom: .25rem; }
+  .gd-steps p { color: var(--muted); }
+  .gd-tip { margin-top: 1rem; background: var(--blue-soft); border-inline-start: 4px solid var(--blue); border-radius: 12px; padding: 1rem 1.2rem; color: var(--ink); }
+
+  .gd-aside { position: sticky; top: 96px; display: grid; gap: 1.25rem; }
+  .gd-card { background: var(--navy); color: #fff; border-radius: var(--radius-lg); padding: 1.75rem; display: grid; gap: .8rem; }
+  .gd-card-t { font-size: 1.25rem; font-weight: 700; }
+  .gd-card p:not(.gd-card-t) { color: var(--muted-on-navy); font-size: .97rem; }
+  .gd-card .btn { width: 100%; margin-top: .4rem; }
+  .gd-toc { border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem 1.4rem; }
+  .gd-toc p { font-weight: 700; margin-bottom: .6rem; }
+  .gd-toc ol { list-style: none; display: grid; gap: .45rem; font-size: .95rem; }
+  .gd-toc a { color: var(--muted); text-decoration: none; }
+  .gd-toc a:hover { color: var(--blue); }
+
+  .gd-faq { display: grid; grid-template-columns: 1fr 1.6fr; gap: clamp(2rem, 5vw, 4rem); align-items: start; }
+  .gd-faq .sh h2 { font-size: var(--s3); }
+  .faq-list details { background: #fff; border: 1px solid var(--line); border-radius: 14px; margin-bottom: .7rem; }
+  .faq-list summary { cursor: pointer; padding: 1.1rem 1.25rem; font-weight: 700; list-style: none; display: flex; justify-content: space-between; gap: 1rem; }
+  .faq-list summary::-webkit-details-marker { display: none; }
+  .faq-list summary::after { content: '+'; font-size: 1.4rem; line-height: 1; color: var(--blue); }
+  .faq-list details[open] summary::after { content: '–'; }
+  .faq-list details p { padding: 0 1.25rem 1.2rem; color: var(--muted); }
+
+  .gd-cards { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+  .gd-cards a { display: flex; flex-direction: column; gap: .5rem; height: 100%; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; text-decoration: none; color: var(--ink); transition: border-color .15s, box-shadow .15s; }
+  .gd-cards a:hover { border-color: var(--navy); box-shadow: 0 20px 40px -30px rgba(6,26,45,.4); }
+  .gd-cards :global(.ic) { width: 32px; height: 32px; color: var(--blue); margin-bottom: .4rem; }
+  .gd-cards h3 { font-size: 1.12rem; }
+  .gd-cards p { color: var(--muted); font-size: .97rem; flex: 1; }
+
+  .gd-final { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1.5rem; }
+  .gd-final .sh { margin-bottom: 0; }
+  .gd-final .sh h2 { font-size: var(--s3); }
+  .gd-final .gd-cta { margin-top: 0; }
+
+  @media (max-width: 1000px) {
+    .gd-body, .gd-faq { grid-template-columns: 1fr; }
+    .gd-aside { position: static; }
+    .gd-toc { display: none; }
+    .gd-cards { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .gd-cards { grid-template-columns: 1fr; }
+    .gd-cta .btn { width: 100%; }
+  }
+</style>

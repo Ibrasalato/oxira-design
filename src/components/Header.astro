@@ -5,8 +5,8 @@ import Logo from './Logo.astro';
 import LangPicker from './LangPicker.astro';
 import { rd } from '../i18n/redesign';
 
-interface Props { lang: Lang; path: string; app?: boolean }
-const { lang, path, app = false } = Astro.props;
+interface Props { lang: Lang; path: string; app?: boolean; langs?: Lang[] }
+const { lang, path, app = false, langs } = Astro.props;
 const c = t[lang];
 const home = link(lang, '/');
 const onHome = path === '/';
@@ -33,7 +33,7 @@ const items = [
       <a class="btn btn-amber hd-cta-m" href={anchor('order')}>{c.nav.contact}</a>
     </nav>
     <div class="hd-end">
-      <LangPicker lang={lang} path={path} />
+      <LangPicker lang={lang} path={path} langs={langs} />
       {app
         ? <a class="btn btn-navy hd-cta" id="hd-order" href={anchor("order")}>{c.nav.contact}</a>
         : <a class="btn btn-navy hd-cta" href={link(lang, '/studio/')}>{c.cta.studio}</a>}

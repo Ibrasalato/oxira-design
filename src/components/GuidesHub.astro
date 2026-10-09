@@ -1,0 +1,88 @@
+---
+// Hub listing all service and region guides (Arabic and English only).
+import Base from '../layouts/Base.astro';
+import Icon from './Icon.astro';
+import { t } from '../i18n/content';
+import { rd } from '../i18n/redesign';
+import { GUIDES, GUIDE_LANGS, guideCopy, guidePath, HUB_PATH, ui, type GuideLang } from '../i18n/guides';
+import { hubLd } from '../lib/guideLd';
+import { link } from '../lib/routes';
+
+interface Props { lang: GuideLang }
+const { lang } = Astro.props;
+const u = ui[lang];
+const groups = [
+  { h: u.services, lead: u.servicesLead, items: GUIDES.filter((g) => g.kind === 'service') },
+  { h: u.regions, lead: u.regionsLead, items: GUIDES.filter((g) => g.kind === 'region') },
+];
+---
+<Base lang={lang} path={HUB_PATH} title={u.hubTitle} description={u.hubDescription} langs={GUIDE_LANGS} ld={hubLd(Astro.site!, lang)}>
+  <section class="page-hero hub-hero">
+    <div class="wrap">
+      <nav class="bc" aria-label={u.breadcrumb}>
+        <ol>
+          <li><a href={link(lang, '/')}>{u.home}</a></li>
+          <li aria-current="page">{u.hub}</li>
+        </ol>
+      </nav>
+      <p class="label">{u.hubKicker}</p>
+      <h1>{u.hubH1}</h1>
+      <p class="lead">{u.hubLead}</p>
+      <div class="hub-cta">
+        <a class="btn btn-amber" href={link(lang, '/studio/')}><Icon name="upload" />{t[lang].cta.studio}</a>
+        <a class="btn btn-ghost" href={link(lang, '/redesign/')}><Icon name="spark" />{rd[lang].nav}</a>
+      </div>
+    </div>
+  </section>
+
+  {groups.map((g, gi) => (
+    <section class={`section-tight${gi === 1 ? ' bg-paper' : ''}`}>
+      <div class="wrap">
+        <div class="sh"><h2>{g.h}</h2><p>{g.lead}</p></div>
+        <ul class="hub-cards">
+          {g.items.map((it) => (
+            <li>
+              <a href={link(lang, guidePath(it.slug))}>
+                <Icon name={it.icon} />
+                <h3>{guideCopy[lang][it.slug].nav}</h3>
+                <p>{guideCopy[lang][it.slug].card}</p>
+                <span class="more">{u.open}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  ))}
+
+  <section class="section-tight">
+    <div class="wrap hub-which">
+      <div class="sh"><h2>{u.which.h}</h2></div>
+      <ul>{u.which.items.map((x) => <li><Icon name="check" /><span>{x}</span></li>)}</ul>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hub-hero { background: radial-gradient(70% 60% at 85% 0%, var(--blue-soft), transparent 70%), #fff; }
+  .hub-hero h1 { font-size: var(--s4); max-width: 22ch; margin-top: .6rem; }
+  .bc ol { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; font-size: .9rem; color: var(--muted); margin-bottom: 1.5rem; }
+  .bc li + li::before { content: '/'; margin-inline-end: .4rem; opacity: .5; }
+  .bc a { color: var(--muted); text-decoration: none; }
+  .bc a:hover { color: var(--ink); text-decoration: underline; }
+  .bc [aria-current] { color: var(--ink); font-weight: 600; }
+  .hub-cta { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+  .hub-cta :global(.ic) { width: 20px; height: 20px; }
+  .sh h2 { font-size: var(--s3); }
+  .hub-cards { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+  .hub-cards a { display: flex; flex-direction: column; gap: .5rem; height: 100%; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.6rem; text-decoration: none; color: var(--ink); transition: border-color .15s, box-shadow .15s; }
+  .hub-cards a:hover { border-color: var(--navy); box-shadow: 0 20px 40px -30px rgba(6,26,45,.4); }
+  .hub-cards :global(.ic) { width: 34px; height: 34px; color: var(--blue); margin-bottom: .4rem; }
+  .hub-cards h3 { font-size: 1.15rem; }
+  .hub-cards p { color: var(--muted); font-size: .97rem; flex: 1; }
+  .hub-which ul { list-style: none; display: grid; gap: .8rem; max-width: 50rem; }
+  .hub-which li { display: flex; gap: .6rem; align-items: flex-start; font-size: 1.05rem; }
+  .hub-which :global(.ic) { width: 20px; height: 20px; flex: none; margin-top: .35rem; color: #0B8A6E; }
+  @media (max-width: 1000px) { .hub-cards { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 640px) { .hub-cards { grid-template-columns: 1fr; } .hub-cta .btn { width: 100%; } }
+</style>
