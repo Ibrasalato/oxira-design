@@ -14,6 +14,7 @@ const mainUrl = CONTACT.main + (lang === 'ar' ? '/' : `/${lang}/`);
 const eventsUrl = 'https://events.oxira.sa' + (lang === 'ar' ? '/' : `/${lang}/`);
 import { rd } from '../i18n/redesign';
 import { pl } from '../i18n/planner';
+import { acc } from '../i18n/account';
 import { GUIDES, guideCopy, guidePath, HUB_PATH, ui, isGuideLang } from '../i18n/guides';
 const gl = isGuideLang(lang) ? lang : null;
 const guideLinks = gl ? GUIDES.filter((g) => g.kind === 'service').map((g) => ({ href: link(gl, guidePath(g.slug)), label: guideCopy[gl][g.slug].nav })) : [];
@@ -32,6 +33,7 @@ const guideLinks = gl ? GUIDES.filter((g) => g.kind === 'service').map((g) => ({
         <li><a href={link(lang, '/studio/')}>{c.nav.studio}</a></li>
         <li><a href={link(lang, '/plan/')}>{pl[lang].nav}</a></li>
         <li><a href={link(lang, '/redesign/')}>{rd[lang].nav}</a></li>
+        <li><a href={link(lang, '/account/')}>{acc[lang].nav}</a></li>
         <li><a href={`${home}#packages`}>{c.nav.packages}</a></li>
         <li><a href={`${home}#developers`}>{c.nav.developers}</a></li>
         <li><a href={`${home}#faq`}>{c.nav.faq}</a></li>

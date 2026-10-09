@@ -5,6 +5,8 @@ import { pl, PLAN_TYPES } from '../../i18n/planner';
 import type { Lang } from '../../i18n/content';
 import { isPdf, pdfToImage } from '../pdfImage';
 import { rg } from '../../i18n/region';
+import { acc as accCall, getToken, sharedPlan } from '../../lib/account';
+import { acc as accCopy } from '../../i18n/account';
 import { detectRegion, regionById, regionName, saveRegion, lenIn, lenOut, areaIn, type Region, type Units, type Programme } from '../../lib/region';
 
 /** Rooms people expect by default, per region (the visitor can tick anything on or off). */
@@ -17,9 +19,10 @@ const PROGRAMME: Record<Programme, { villa: Partial<Brief['villa']>; bld: Partia
 };
 const LEN = ['land.w', 'land.d', 'land.streetW', 'setback.front', 'setback.back', 'setback.side'];
 
-type Cfg = { lang: Lang; ai: string; order: string; studio: string; whatsapp: string };
+type Cfg = { lang: Lang; ai: string; order: string; studio: string; whatsapp: string; account: string };
+type Cloud = { pid: string; share: string; title: string };
 type Extras = { planTypes: string[]; formats: string[]; facade: string };
-type Saved = { v: 1; brief: Brief; extras: Extras; floors: Floor[]; seq: number; edited: boolean; path: 'new' | 'upload'; variant?: number; imported?: boolean };
+type Saved = { v: 1; brief: Brief; extras: Extras; floors: Floor[]; seq: number; edited: boolean; path: 'new' | 'upload'; variant?: number; imported?: boolean; cloud?: Cloud | null };
 
 const KEY = 'ox-plan-v1';
 const MAX = 15 * 1048576;
@@ -46,6 +49,7 @@ export function startPlanner(root: HTMLElement) {
   let sbTouched = false;
   let variant = 0;
   let imported = false; // the plan came from a drawing (not from the generator)
+  let cloud: Cloud | null = null; // saved in the visitor's account
   let region: Region = detectRegion(cfg.lang);
   let units: Units = 'm'; // the form is rendered in metres; applyRegion / restore switch it
   const u2 = () => (units === 'ft' ? 'ft²' : T.m2);
@@ -497,13 +501,18 @@ export function startPlanner(root: HTMLElement) {
   // ------------------------------------------------------------ storage
   function save() {
     if (!project) return;
-    const s: Saved = { v: 1, brief: project.brief, extras: readExtras(), floors: project.floors, seq: project.seq, edited, path, variant, imported };
-    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
+    try { localStorage.setItem(KEY, JSON.stringify(snap())); } catch {}
   }
+  const snap = (): Saved => ({ v: 1, brief: project!.brief, extras: readExtras(), floors: project!.floors, seq: project!.seq, edited, path, variant, imported, cloud });
   function restore(): boolean {
     let s: Saved | null = null;
     try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { s = null; }
+    return applySaved(s);
+  }
+  function applySaved(s: Saved | null): boolean {
     if (!s || s.v !== 1 || !s.brief) return false;
+    cloud = s.cloud || null;
+    showCloud();
     region = regionById(s.brief.region) || region;
     setUnits(s.brief.units || region.units);
     document.querySelectorAll<HTMLSelectElement>('[data-region-select]').forEach((x) => { x.value = region.id; });
@@ -607,7 +616,7 @@ export function startPlanner(root: HTMLElement) {
     const rooms = p.floors.flatMap((f) => geometry(f, f.level === 0).rooms.filter((r) => !['stair', 'lift', 'void'].includes(r.leaf.kind)).map((r) => ({ name: `${floorLabel(f, AR as typeof T)} - ${r.leaf.name || AR.kinds[r.leaf.kind]}`.slice(0, 40), type: r.leaf.kind, area: +r.area.toFixed(2) })));
     return {
       notes: lines.join('\n'),
-      summary: { kind: 'plan', path: 'new', brief: p.brief, planTypes: x.planTypes, formats: x.formats, facade: x.facade, edited, totalArea: +tt.built.toFixed(1), coverage: +tt.coverage.toFixed(3), floors: p.floors.map((f, i) => ({ label: floorLabel(f, AR as typeof T), repeat: f.repeat, gross: +tt.per[i].gross.toFixed(1) })), rooms: rooms.slice(0, 120) },
+      summary: { kind: 'plan', path: 'new', share: cloud?.share || '', brief: p.brief, planTypes: x.planTypes, formats: x.formats, facade: x.facade, edited, totalArea: +tt.built.toFixed(1), coverage: +tt.coverage.toFixed(3), floors: p.floors.map((f, i) => ({ label: floorLabel(f, AR as typeof T), repeat: f.repeat, gross: +tt.per[i].gross.toFixed(1) })), rooms: rooms.slice(0, 120) },
       area: Math.round(p.brief.land.w * p.brief.land.d),
       style: x.facade,
     };
@@ -764,6 +773,75 @@ export function startPlanner(root: HTMLElement) {
     }
   });
 
+  // ------------------------------------------------------------ account: save, share, open
+  const AC = accCopy[cfg.lang];
+  const shareUrl = (s: string) => `${location.origin}${location.pathname}?s=${s}`;
+  function showCloud() {
+    const signed = !!getToken();
+    $('pl-save-in').hidden = signed;
+    $('pl-save-form').hidden = !signed;
+    $('pl-share').hidden = !cloud;
+    if (cloud) {
+      $<HTMLInputElement>('pl-share-url').value = shareUrl(cloud.share);
+      const n = $<HTMLInputElement>('pl-save-name');
+      if (!n.value) n.value = cloud.title;
+    }
+  }
+  function saveMsg(text: string, err = false) {
+    const m = $('pl-save-msg');
+    m.textContent = text; m.hidden = !text; m.classList.toggle('is-err', err);
+  }
+  $('pl-save-go').addEventListener('click', async () => {
+    if (!project) return;
+    const b = $<HTMLButtonElement>('pl-save-go');
+    const title = $<HTMLInputElement>('pl-save-name').value.trim() || `${T.type.names[project.brief.type]} ${fmt(project.brief.land.w, 0)}×${fmt(project.brief.land.d, 0)}`;
+    b.disabled = true;
+    try {
+      const data = { ...snap(), cloud: null };
+      const r = await accCall('save', { pid: cloud?.pid || '', title, kind: 'plan', data: JSON.stringify(data) }, cfg.lang);
+      if (!r.success) {
+        if (r.reason === 'session') { showCloud(); saveMsg(AC.signIn.expired, true); }
+        else saveMsg(AC.err, true);
+        return;
+      }
+      cloud = { pid: r.pid, share: r.share, title };
+      $<HTMLInputElement>('pl-save-name').value = title;
+      showCloud(); save();
+      saveMsg(AC.save.saved);
+    } catch { saveMsg(AC.err, true); } finally { b.disabled = false; }
+  });
+  $('pl-share-copy').addEventListener('click', () => {
+    const inp = $<HTMLInputElement>('pl-share-url');
+    const b = $('pl-share-copy');
+    const done = () => { b.textContent = AC.save.copied; setTimeout(() => { b.textContent = AC.save.copy; }, 1800); };
+    if (navigator.clipboard) navigator.clipboard.writeText(inp.value).then(done, () => { inp.select(); });
+    else { inp.select(); document.execCommand('copy'); done(); }
+  });
+  /** ?p=<pid> opens a plan from the visitor's account, ?s=<share> a plan shared with them. */
+  async function openFromLink(q: URLSearchParams) {
+    const pid = q.get('p'), s = q.get('s');
+    if (!pid && !s) return;
+    history.replaceState(null, '', location.pathname + location.hash);
+    try {
+      let data: string | undefined, own: Cloud | null = null;
+      if (pid && getToken()) {
+        const r = await accCall('project', { pid }, cfg.lang);
+        if (r.success && r.project) { data = r.project.data; own = { pid: r.project.pid, share: r.project.share, title: r.project.title }; }
+      } else if (s && /^[a-z0-9]{16}$/.test(s)) {
+        const r = await sharedPlan(s);
+        if (r.success) data = r.data;
+      }
+      if (!data) { aiMsg($('pl-ai-msg'), AC.err, true); return; }
+      const saved = JSON.parse(data) as Saved;
+      saved.cloud = own;
+      $<HTMLInputElement>('pl-save-name').value = own?.title || '';
+      if (!applySaved(saved)) return;
+      save();
+      $('pl-shared-note').hidden = !!own;
+      $('pl-canvas').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch { aiMsg($('pl-ai-msg'), AC.err, true); }
+  }
+
   // ------------------------------------------------------------ start
   document.addEventListener('ox-region', (e) => {
     const r = regionById((e as CustomEvent).detail);
@@ -775,6 +853,8 @@ export function startPlanner(root: HTMLElement) {
   void saveRegion;
   syncForm();
   const q = new URLSearchParams(location.search);
+  showCloud();
   if (!restore()) { applyRegion(region); regenerate(false); }
   if (q.get('path') === 'upload') setPath('upload');
+  openFromLink(q);
 }

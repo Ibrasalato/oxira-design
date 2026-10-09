@@ -25,6 +25,10 @@ export const N8N = {
   listing: HOOK + 'oxira-design-listing',
   listingGet: HOOK + 'oxira-design-listing-get',
   planAi: HOOK + 'oxira-plan-ai',
+  login: HOOK + 'oxira-design-login',
+  account: HOOK + 'oxira-design-account',
+  deliver: HOOK + 'oxira-design-deliver',
+  share: HOOK + 'oxira-design-share',
 };
 
 export const CONTACT = {

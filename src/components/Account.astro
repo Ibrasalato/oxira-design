@@ -1,0 +1,140 @@
+---
+// /account/: sign-in by emailed link, saved plans, orders with message threads and rating,
+// and the designer portal (apply, take orders, deliver files). Controller: src/scripts/account.ts.
+// Backend: n8n "Oxira Design — Accounts".
+import { t, type Lang } from '../i18n/content';
+import { acc } from '../i18n/account';
+import { pl } from '../i18n/planner';
+import { link } from '../lib/routes';
+import Icon from './Icon.astro';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const a = acc[lang];
+const items = t[lang].packages.items as Record<string, { name: string }>;
+const pkgs: Record<string, string> = Object.fromEntries(Object.entries(items).map(([k, v]) => [k, v.name]));
+pkgs.plan = pl[lang].nav;
+const cfg = { lang, plan: link(lang, '/plan/'), pkgs };
+---
+<section class="page-hero acc-hero">
+  <div class="wrap">
+    <h1>{a.title}</h1>
+    <p class="lead">{a.lead}</p>
+  </div>
+</section>
+
+<section class="section-tight acc" id="acc" data-cfg={JSON.stringify(cfg)} data-state="loading">
+  <div class="wrap">
+    <div class="acc-loading" data-show="loading"><span class="acc-spin"></span></div>
+
+    <form class="acc-card acc-signin" id="acc-signin" data-show="signin" novalidate>
+      <h2>{a.signIn.title}</h2>
+      <p class="acc-muted">{a.signIn.sub}</p>
+      <label class="acc-f"><span>{a.signIn.email}</span><input type="email" name="email" required autocomplete="email" dir="ltr" maxlength="160" /></label>
+      <button type="submit" class="btn btn-amber acc-wide">{a.signIn.btn}</button>
+      <p class="acc-msg" id="acc-signin-msg" role="status" aria-live="polite" hidden></p>
+    </form>
+
+    <div data-show="app">
+      <div class="acc-top">
+        <p>{a.hello} <b id="acc-email" dir="ltr"></b></p>
+        <button type="button" class="btn btn-ghost acc-out" id="acc-out">{a.out}</button>
+      </div>
+      <div class="acc-tabs" role="tablist">
+        <button type="button" role="tab" data-tab="projects" aria-selected="true">{a.tabs.projects} <i id="acc-n-projects"></i></button>
+        <button type="button" role="tab" data-tab="orders" aria-selected="false">{a.tabs.orders} <i id="acc-n-orders"></i></button>
+        <button type="button" role="tab" data-tab="designer" aria-selected="false">{a.tabs.designer}</button>
+      </div>
+      <p class="acc-msg" id="acc-msg" role="status" aria-live="polite" hidden></p>
+
+      <div class="acc-panel" data-panel="projects">
+        <div class="acc-list" id="acc-projects"></div>
+        <a class="btn btn-navy" href={link(lang, '/plan/')}><Icon name="pencil" />{a.projects.newPlan}</a>
+      </div>
+
+      <div class="acc-panel" data-panel="orders" hidden>
+        <div class="acc-list" id="acc-orders"></div>
+      </div>
+
+      <div class="acc-panel" data-panel="designer" hidden>
+        <form class="acc-card" id="acc-apply" hidden novalidate>
+          <p>{a.des.intro}</p>
+          <div class="acc-row2">
+            <label class="acc-f"><span>{a.des.name} *</span><input name="name" required maxlength="80" autocomplete="name" /></label>
+            <label class="acc-f"><span>{a.des.countries}</span><input name="countries" maxlength="120" /></label>
+          </div>
+          <label class="acc-f"><span>{a.des.skills} *</span><input name="skills" required maxlength="300" /></label>
+          <label class="acc-f"><span>{a.des.note}</span><textarea name="note" rows="3" maxlength="1000"></textarea></label>
+          <button type="submit" class="btn btn-amber">{a.des.send}</button>
+        </form>
+        <p class="acc-card acc-note" id="acc-pending" hidden>{a.des.pending}</p>
+        <div id="acc-portal" hidden>
+          <h2 class="acc-h2">{a.des.open}</h2>
+          <div class="acc-list" id="acc-open"></div>
+          <h2 class="acc-h2">{a.des.mine}</h2>
+          <div class="acc-list" id="acc-mine"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { startAccount } from '../scripts/account';
+  const root = document.getElementById('acc');
+  if (root) startAccount(root);
+</script>
+
+<style is:global>
+  .acc { min-height: 50vh; }
+  .acc [data-show] { display: none; }
+  .acc[data-state='loading'] [data-show='loading'], .acc[data-state='signin'] [data-show='signin'], .acc[data-state='app'] [data-show='app'] { display: block; }
+  .acc-loading { padding: 3rem 0; text-align: center; }
+  .acc-spin { display: inline-block; width: 2rem; height: 2rem; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--navy); animation: acc-spin 0.8s linear infinite; }
+  @keyframes acc-spin { to { transform: rotate(360deg); } }
+  .acc-card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem; display: grid; gap: .8rem; }
+  .acc-signin { max-width: 28rem; }
+  .acc-signin h2 { font-size: 1.35rem; }
+  .acc-muted, .acc-small { color: var(--muted); font-size: .92rem; }
+  .acc-small { font-size: .84rem; }
+  .acc-f { display: grid; gap: .3rem; font-size: .9rem; font-weight: 600; }
+  .acc-f input, .acc-f textarea, .acc-f select { font: 500 .98rem var(--font); padding: .6rem .7rem; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--navy); width: 100%; }
+  .acc-f input:focus, .acc-f textarea:focus { outline: none; border-color: var(--blue); }
+  .acc-row2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .8rem; }
+  .acc-wide { width: 100%; justify-content: center; }
+  .acc-msg { padding: .6rem .8rem; border-radius: 10px; background: var(--blue-soft); color: var(--navy); font-size: .92rem; margin: .6rem 0; }
+  .acc-msg.is-err { background: #FDECEC; color: #9B1C1C; }
+  .acc-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .acc-out { padding: .45rem .9rem; font-size: .88rem; }
+  .acc-tabs { display: flex; gap: .4rem; border-bottom: 1.5px solid var(--line); margin-bottom: 1.25rem; overflow-x: auto; }
+  .acc-tabs button { font: 700 .95rem var(--font); color: var(--muted); background: none; border: 0; border-bottom: 3px solid transparent; padding: .7rem .9rem; cursor: pointer; white-space: nowrap; margin-bottom: -1.5px; }
+  .acc-tabs button[aria-selected='true'] { color: var(--navy); border-bottom-color: var(--amber); }
+  .acc-tabs i { font-style: normal; font-size: .78rem; background: var(--paper, #F5F7F9); border-radius: 99px; padding: .05rem .45rem; margin-inline-start: .2rem; }
+  .acc-tabs i:empty { display: none; }
+  .acc-list { display: grid; gap: .8rem; margin-bottom: 1.25rem; }
+  .acc-h2 { font-size: 1.15rem; margin: .5rem 0 .75rem; }
+  .acc-item { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .6rem; }
+  .acc-item-h { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+  .acc-item-h b { font-size: 1.05rem; }
+  .acc-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+  .acc-actions .btn, .acc-item .btn { padding: .45rem .85rem; font-size: .88rem; }
+  .acc-badge { font-size: .8rem; font-weight: 700; padding: .2rem .6rem; border-radius: 99px; background: var(--blue-soft); color: var(--navy); }
+  .acc-badge[data-s='delivered'] { background: #E6F6EC; color: #17663A; }
+  .acc-badge[data-s='unpaid'] { background: #FFF4D6; color: #7A5300; }
+  .acc-badge[data-s='cancelled'] { background: #F1F1F1; color: #666; }
+  .acc-thread { display: grid; gap: .45rem; padding: .7rem; background: var(--paper, #F5F7F9); border-radius: 12px; }
+  .acc-thread > b { font-size: .85rem; color: var(--muted); }
+  .acc-bubble { max-width: 85%; padding: .5rem .7rem; border-radius: 12px; background: #fff; font-size: .92rem; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .acc-bubble.is-mine { justify-self: end; background: var(--navy); color: #fff; }
+  .acc-bubble small { display: block; font-size: .74rem; opacity: .7; margin-bottom: .1rem; }
+  .acc-send { display: grid; grid-template-columns: 1fr auto; gap: .45rem; align-items: end; }
+  .acc-item textarea, .acc-item input[type='file'] { font: 500 .92rem var(--font); padding: .5rem .65rem; border: 1.5px solid var(--line); border-radius: 10px; resize: vertical; min-height: 2.6rem; width: 100%; background: #fff; color: var(--navy); }
+  .acc-stars { display: flex; gap: .2rem; direction: ltr; }
+  .acc-stars button { font-size: 1.5rem; line-height: 1; background: none; border: 0; cursor: pointer; color: #C9CFD6; padding: 0 .1rem; }
+  .acc-stars button.is-on { color: var(--amber); }
+  .acc-rate { display: grid; gap: .5rem; padding: .7rem; border: 1.5px dashed var(--amber); border-radius: 12px; }
+  .acc-note { background: #FFFBF0; border-color: var(--amber); }
+  .acc-notes { font-size: .88rem; white-space: pre-wrap; color: var(--muted); max-height: 12rem; overflow: auto; background: var(--paper, #F5F7F9); padding: .6rem; border-radius: 10px; }
+  .acc-deliver { display: grid; gap: .5rem; padding: .7rem; border: 1.5px solid var(--line); border-radius: 12px; }
+  .acc-empty { color: var(--muted); padding: 1rem; border: 1.5px dashed var(--line); border-radius: var(--radius); }
+</style>

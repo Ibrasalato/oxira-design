@@ -87,3 +87,11 @@ images) and says what to complete. Requests go to the order webhook with `packag
 `notes` (Arabic, for the team) and `summary` (JSON), the generated plan is attached as `oxira-plan.dxf`.
 Every upload on the site accepts PDF: the redesign page uses the first page as the photo, the studio sends
 PDFs to the team.
+
+## Accounts and designer portal (/account/)
+
+- Sign-in by emailed link: `oxira-design-login` stores a 40-hex token (30 days) in `oxira_portal_tokens` (role `design`); the page keeps it in localStorage `ox-acc-k`.
+- `oxira-design-account` {k, action, data}: `load`, `project`, `save`, `delete` (plans in `oxira_design_projects`), `comment` (per-order thread in `oxira_design_comments`, emailed to the other side), `rate`, `apply`, `claim`.
+- Plans: "Save to my account" in the plan designer; `/plan/?p=<pid>` opens your own plan, `/plan/?s=<share>` opens a shared copy (read through `oxira-design-share`). A saved plan's share id goes into the order summary so the designer can open it.
+- Designers: apply from the account page → row in `oxira_design_designers` with status `pending`; set `active` (or `admin`) by hand. Active designers see open orders, take them, message the client and deliver files (`oxira-design-deliver`, multipart, emailed to the client with bcc info@, order marked تم التسليم).
+- n8n source: `n8n/oxira-design-accounts.workflow.ts` (workflow "Oxira Design — Accounts", id kQlWsL3JiIVlDEut).

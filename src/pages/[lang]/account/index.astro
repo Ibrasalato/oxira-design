@@ -1,0 +1,11 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Account from '../../../components/Account.astro';
+import { languages, type Lang } from '../../../i18n/content';
+import { acc } from '../../../i18n/account';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar').map((l) => ({ params: { lang: l.code } }));
+}
+const lang = Astro.params.lang as Lang;
+---
+<Base lang={lang} path="/account/" title={`${acc[lang].title} | Oxira Design`} description={acc[lang].meta} noindex><Account lang={lang} /></Base>

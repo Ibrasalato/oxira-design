@@ -10,13 +10,15 @@ import { KINDS, defaultBrief, frontSetback } from '../scripts/planner/model';
 import Icon from './Icon.astro';
 import RegionPicker from './RegionPicker.astro';
 import { rg } from '../i18n/region';
+import { acc } from '../i18n/account';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const p = pl[lang];
 const d = defaultBrief();
 d.setback.front = frontSetback(d.land.streetW);
-const cfg = { lang, ai: N8N.planAi, order: import.meta.env.PUBLIC_ORDER_ENDPOINT || N8N.order, studio: link(lang, '/studio/'), whatsapp: CONTACT.whatsapp };
+const cfg = { lang, ai: N8N.planAi, order: import.meta.env.PUBLIC_ORDER_ENDPOINT || N8N.order, studio: link(lang, '/studio/'), whatsapp: CONTACT.whatsapp, account: link(lang, '/account/') };
+const ac = acc[lang];
 const num = (name: string, label: string, value: number, min: number, max: number, step = 1, unit = '') => ({ name, label, value, min, max, step, unit });
 const landFields = [num('land.w', p.land.w, d.land.w, 6, 300, 0.5, p.land.m), num('land.d', p.land.d, d.land.d, 6, 300, 0.5, p.land.m)];
 const villaNums = [
@@ -191,6 +193,21 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
           <button type="button" class="btn btn-ghost" id="pl-dxf"><Icon name="file" />{p.editor.dxf}</button>
           <button type="button" class="btn btn-ghost" id="pl-print"><Icon name="file" />{p.editor.print}</button>
           <button type="button" class="btn btn-navy" id="pl-3d"><Icon name="cube" />{p.editor.studio}</button>
+        </div>
+        <div class="pl-save" id="pl-save">
+          <p class="pl-shared" id="pl-shared-note" hidden><Icon name="people" />{ac.save.shared}</p>
+          <div class="pl-save-h"><b>{ac.save.title}</b><small>{ac.save.sub}</small></div>
+          <a class="btn btn-ghost" id="pl-save-in" href={link(lang, '/account/')}><Icon name="user" />{ac.save.signIn}</a>
+          <div class="pl-save-row" id="pl-save-form" hidden>
+            <label class="pl-f"><span>{ac.save.name}</span><input id="pl-save-name" maxlength="80" /></label>
+            <button type="button" class="btn btn-navy" id="pl-save-go"><Icon name="check" />{ac.save.btn}</button>
+          </div>
+          <div class="pl-save-row" id="pl-share" hidden>
+            <label class="pl-f"><span>{ac.save.share}</span><input id="pl-share-url" readonly dir="ltr" onfocus="this.select()" /></label>
+            <button type="button" class="btn btn-ghost" id="pl-share-copy">{ac.save.copy}</button>
+          </div>
+          <p class="pl-ai-msg" id="pl-save-msg" role="status" aria-live="polite" hidden></p>
+          <a class="pl-small" href={link(lang, '/account/')}>{ac.save.mine} →</a>
         </div>
         <p class="pl-small pl-note">{p.editor.note}</p>
       </div>
@@ -407,6 +424,14 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
   .pl-stats div { padding: .5rem .7rem; border-radius: 12px; background: var(--paper); }
   .pl-stats dt { color: var(--muted); font-size: .8rem; }
   .pl-stats dd { margin: 0; font-weight: 700; color: var(--navy); font-size: 1rem; text-align: start; }
+  .pl-save { display: grid; gap: .6rem; padding: 1rem; border-radius: 14px; border: 1.5px solid var(--line); background: #fff; justify-items: start; }
+  .pl-save-h { display: grid; gap: .15rem; }
+  .pl-save-h small { color: var(--muted); font-size: .86rem; }
+  .pl-save-row { display: grid; grid-template-columns: 1fr auto; gap: .5rem; align-items: end; width: 100%; }
+  .pl-save .pl-ai-msg { background: var(--blue-soft); color: var(--navy); width: 100%; }
+  .pl-save .pl-ai-msg.is-err { background: #FDECEC; color: #9B1C1C; }
+  .pl-shared { display: flex; gap: .45rem; align-items: center; padding: .55rem .75rem; border-radius: 10px; background: #FFFBF0; border: 1px solid var(--amber); font-size: .9rem; width: 100%; }
+  .pl-shared .ic { width: 1.1rem; height: 1.1rem; flex: none; }
   .pl-exports { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
   .pl-exports > span { color: var(--muted); font-size: .88rem; font-weight: 600; margin-inline-end: .25rem; }
   .pl-exports .btn { padding: .55rem .9rem; font-size: .9rem; }
