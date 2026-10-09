@@ -12,7 +12,7 @@ export const languages: { code: Lang; name: string; flag: string; locale: string
 ];
 export const langPath = (l: Lang) => (l === 'ar' ? '/' : `/${l}/`);
 
-const HOOK = 'https://ibrasalato.app.n8n.cloud/webhook/';
+const HOOK = 'https://api.oxira.sa/';
 export const N8N = {
   chat: HOOK + 'oxira-design-chat',
   order: HOOK + 'oxira-design-order',

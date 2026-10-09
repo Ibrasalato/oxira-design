@@ -439,7 +439,7 @@ const createInvoice = node({
       sendBody: true,
       contentType: 'json',
       specifyBody: 'json',
-      jsonBody: expr("{{ JSON.stringify({ amount: Math.round($('Price pack').first().json.amount * 100), currency: 'SAR', description: 'Oxira Design - ' + $('Price pack').first().json.renders + ' AI room renders (#' + $json.id + ')', callback_url: 'https://ibrasalato.app.n8n.cloud/webhook/oxira-redesign-moyasar-callback', success_url: $('Price pack').first().json.return_url + '?bought=' + $json.id, back_url: $('Price pack').first().json.return_url + '?cancel=1', metadata: { kind: 'redesign', purchase_id: String($json.id), wallet: $('Price pack').first().json.wallet } }) }}"),
+      jsonBody: expr("{{ JSON.stringify({ amount: Math.round($('Price pack').first().json.amount * 100), currency: 'SAR', description: 'Oxira Design - ' + $('Price pack').first().json.renders + ' AI room renders (#' + $json.id + ')', callback_url: 'https://api.oxira.sa/oxira-redesign-moyasar-callback', success_url: $('Price pack').first().json.return_url + '?bought=' + $json.id, back_url: $('Price pack').first().json.return_url + '?cancel=1', metadata: { kind: 'redesign', purchase_id: String($json.id), wallet: $('Price pack').first().json.wallet } }) }}"),
       options: { timeout: 20000 }
     },
     credentials: moyasar

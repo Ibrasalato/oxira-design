@@ -8,7 +8,7 @@ import Logo from './Logo.astro';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const c = t[lang].chat;
-const endpoint = import.meta.env.PUBLIC_CHAT_ENDPOINT || N8N.chat;
+const endpoint = N8N.chat;
 ---
 <div class="oxchat" id="oxchat"
      data-endpoint={endpoint}

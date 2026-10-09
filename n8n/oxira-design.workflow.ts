@@ -2,7 +2,7 @@
 import { workflow, node, trigger, sticky, languageModel, memory, tool, ifElse, fromAi, expr } from '@n8n/workflow-sdk';
 
 const ORIGINS = 'https://design.oxira.sa,https://ibrasalato.github.io,http://localhost:4321';
-const HOOKS = 'https://ibrasalato.app.n8n.cloud/webhook/';
+const HOOKS = 'https://api.oxira.sa/';
 
 const leadsTable = { __rl: true, mode: 'id', value: 'czR0HwEevfIScC4O', cachedResultName: 'oxira_design_leads' };
 const ordersTable = { __rl: true, mode: 'id', value: '8aPzt7Ki9h8b4uDp', cachedResultName: 'oxira_design_orders' };
