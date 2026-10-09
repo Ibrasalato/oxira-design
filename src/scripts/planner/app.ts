@@ -337,7 +337,9 @@ export function startPlanner(root: HTMLElement) {
   });
   $('pl-print').addEventListener('click', () => {
     if (!project) return;
-    const box = $('pl-print');
+    const box = $('pl-printout');
+    // print mode hides everything but direct children of <body> marked for print
+    if (box.parentElement !== document.body) document.body.appendChild(box);
     const b = project.brief;
     const tt = totals(project);
     const rows = briefRows(T).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('');

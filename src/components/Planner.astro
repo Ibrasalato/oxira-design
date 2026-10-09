@@ -236,7 +236,7 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
   </div>
 </section>
 
-<div class="pl-print" id="pl-print" aria-hidden="true"></div>
+<div class="pl-print" id="pl-printout" aria-hidden="true"></div>
 
 <script>
   import { startPlanner } from '../scripts/planner/app';
@@ -386,14 +386,15 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
   .pl-print { display: none; }
   @media print {
     body > *:not(.pl-print) { display: none !important; }
-    .pl-print { display: block !important; color: #0A253E; font-family: var(--font); }
+    @page { size: A4; margin: 12mm; }
+    .pl-print { display: block !important; color: #0A253E; font-family: var(--font); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .pl-print h1 { font-size: 18pt; margin: 0 0 4mm; }
     .pl-print table { border-collapse: collapse; margin-bottom: 6mm; font-size: 10pt; }
     .pl-print th, .pl-print td { border: 1px solid #ccd5de; padding: 2mm 3mm; text-align: start; vertical-align: top; }
     .pl-print section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 6mm; }
     .pl-print section + section { break-before: page; page-break-before: always; }
     .pl-print h2 { font-size: 14pt; margin: 0 0 3mm; }
-    .pl-print svg { width: 100%; max-height: 240mm; }
+    .pl-print svg { display: block; width: 100%; height: auto; max-height: 235mm; }
     .pl-print p { font-size: 9pt; color: #556779; }
   }
 
