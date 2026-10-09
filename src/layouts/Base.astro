@@ -15,6 +15,7 @@ import '@fontsource/cairo/arabic-600.css';
 import '@fontsource/cairo/arabic-700.css';
 import '../styles/global.css';
 import { t, languages, CONTACT, type Lang } from '../i18n/content';
+import { legal } from '../i18n/legal';
 import { link, asset } from '../lib/routes';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
@@ -33,6 +34,7 @@ const canonical = new URL(link(lang, path), site).href;
 const locale = languages.find((l) => l.code === lang)!.locale;
 const ogImage = new URL(asset(`og-${lang}.png`), site).href;
 const gaId = import.meta.env.PUBLIC_GA_ID || '';
+const lg = legal[lang];
 const ld = {
   '@context': 'https://schema.org',
   '@type': 'Service',
@@ -70,8 +72,24 @@ const ld = {
     <link rel="sitemap" href={asset('sitemap.xml')} />
     <script type="application/ld+json" set:html={JSON.stringify(ld)} />
     {extraLd.map((x) => <script type="application/ld+json" set:html={JSON.stringify(x)} />)}
-    {gaId && <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}></script>}
-    {gaId && <script is:inline define:vars={{ gaId }}>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config',gaId,{anonymize_ip:true});</script>}
+    {gaId && <script is:inline define:vars={{ gaId }}>
+      // Analytics: loads straight away, except for visitors in Europe (by time zone), who are asked first.
+      (function () {
+        var K = 'ox-consent', c = null, tz = '';
+        try { c = localStorage.getItem(K); } catch (e) {}
+        try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
+        var eu = (/^Europe\//.test(tz) && !/^Europe\/(Moscow|Istanbul|Minsk|Kirov|Volgograd|Saratov|Ulyanovsk|Astrakhan|Samara|Simferopol|Kaliningrad)$/.test(tz)) || /^Atlantic\/(Canary|Madeira|Azores|Reykjavik|Faroe)$/.test(tz);
+        function load() {
+          var s = document.createElement('script'); s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId; document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || []; window.gtag = function () { dataLayer.push(arguments); };
+          gtag('js', new Date()); gtag('config', gaId, { anonymize_ip: true });
+        }
+        if (!eu || c === 'yes') { load(); return; }
+        if (c === 'no') return;
+        window.__oxConsent = function (v) { try { localStorage.setItem(K, v); } catch (e) {} if (v === 'yes') load(); var b = document.getElementById('ox-consent'); if (b) b.remove(); };
+        document.addEventListener('DOMContentLoaded', function () { var b = document.getElementById('ox-consent'); if (b) b.hidden = false; });
+      })();
+    </script>}
   </head>
   <body class={app ? 'is-app' : ''}>
     <a class="skip" href="#main">{lang === 'ar' ? 'انتقل إلى المحتوى' : 'Skip to content'}</a>
@@ -81,5 +99,11 @@ const ld = {
     </main>
     {!app && <Footer lang={lang} path={path} langs={langs} />}
     <Chat lang={lang} />
+    {gaId && (
+      <div class="ox-consent" id="ox-consent" role="dialog" aria-live="polite" hidden>
+        <p>{lg.consent.text} <a href={link(lang, '/privacy/')}>{lg.consent.more}</a></p>
+        <div><button type="button" class="btn btn-ghost" onclick="__oxConsent('no')">{lg.consent.decline}</button><button type="button" class="btn btn-navy" onclick="__oxConsent('yes')">{lg.consent.accept}</button></div>
+      </div>
+    )}
   </body>
 </html>

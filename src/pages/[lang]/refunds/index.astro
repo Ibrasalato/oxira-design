@@ -1,0 +1,11 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Legal from '../../../components/Legal.astro';
+import { languages, type Lang } from '../../../i18n/content';
+import { legal } from '../../../i18n/legal';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar').map((l) => ({ params: { lang: l.code } }));
+}
+const lang = Astro.params.lang as Lang;
+---
+<Base lang={lang} path="/refunds/" title={`${legal[lang].refunds.title} | Oxira Design`} description={legal[lang].refunds.meta}><Legal lang={lang} page="refunds" /></Base>

@@ -3,7 +3,7 @@ import { GUIDES, GUIDE_LANGS, GUIDES_UPDATED, HUB_PATH } from '../i18n/guides';
 
 const site = 'https://design.oxira.sa';
 // Pages that exist in every language.
-const pages = ['', 'studio/', 'plan/', 'redesign/', 'privacy/'];
+const pages = ['', 'studio/', 'plan/', 'redesign/', 'privacy/', 'terms/', 'refunds/'];
 // Guide pages exist in Arabic and English only.
 const guides = [HUB_PATH, ...GUIDES.map((g) => `/${g.slug}/`)].map((p) => p.replace(/^\//, ''));
 

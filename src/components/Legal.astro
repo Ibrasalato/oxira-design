@@ -1,0 +1,27 @@
+---
+// Terms of service and refund policy pages (copy in src/i18n/legal.ts).
+import { CONTACT, t, type Lang } from '../i18n/content';
+import { legal } from '../i18n/legal';
+import { link } from '../lib/routes';
+interface Props { lang: Lang; page: 'terms' | 'refunds' }
+const { lang, page } = Astro.props;
+const L = legal[lang];
+const p = L[page];
+---
+<section class="page-hero"><div class="wrap"><h1>{p.title}</h1><p class="lead">{L.updated}</p></div></section>
+<section class="section-tight"><div class="wrap lg">
+  {p.sections.map((s) => <article><h2>{s.h}</h2><p>{s.p}</p></article>)}
+  <p class="lg-c"><a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a></p>
+  <nav class="lg-nav">
+    {page !== 'terms' && <a href={link(lang, '/terms/')}>{L.nav.terms}</a>}
+    {page !== 'refunds' && <a href={link(lang, '/refunds/')}>{L.nav.refunds}</a>}
+    <a href={link(lang, '/privacy/')}>{t[lang].footer.links.privacy}</a>
+  </nav>
+</div></section>
+<style>
+  .lg { max-width: 46rem; display: grid; gap: 2rem; }
+  .lg h2 { font-size: 1.3rem; margin-bottom: .5rem; }
+  .lg p { color: var(--muted); }
+  .lg-c a, .lg-nav a { color: var(--blue); font-weight: 700; }
+  .lg-nav { display: flex; flex-wrap: wrap; gap: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+</style>
