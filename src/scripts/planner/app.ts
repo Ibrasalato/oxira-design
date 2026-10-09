@@ -448,6 +448,12 @@ export function startPlanner(root: HTMLElement) {
   };
   const fullDxf = () => project ? toDxf(project, project.floors, { names, m2: T.m2, site: true, areas: true, title: (f) => floorLabel(f) }) : '';
   $('pl-dxf').addEventListener('click', () => { if (project?.floors.length) download('oxira-plan.dxf', fullDxf(), 'application/dxf'); });
+  $('pl-ifc').addEventListener('click', async () => {
+    if (!project?.floors.length) return;
+    const { planToIfc } = await import('./ifc.ts');
+    const title = `Oxira Design - ${T.type.names[project.brief.type]} ${fmt(project.brief.land.w, 0)}x${fmt(project.brief.land.d, 0)}`;
+    download('oxira-plan.ifc', planToIfc(project, { names, title, floorName: (f, i) => floorLabel(f).replace(/×\d+$/, '').trim() + (f.repeat > 1 ? ` ${i + 1}` : '') }), 'application/x-step');
+  });
   $('pl-3d').addEventListener('click', () => {
     if (!project) return;
     const f = project.floors[floorIdx];

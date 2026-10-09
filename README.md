@@ -95,3 +95,8 @@ PDFs to the team.
 - Plans: "Save to my account" in the plan designer; `/plan/?p=<pid>` opens your own plan, `/plan/?s=<share>` opens a shared copy (read through `oxira-design-share`). A saved plan's share id goes into the order summary so the designer can open it.
 - Designers: apply from the account page → row in `oxira_design_designers` with status `pending`; set `active` (or `admin`) by hand. Active designers see open orders, take them, message the client and deliver files (`oxira-design-deliver`, multipart, emailed to the client with bcc info@, order marked تم التسليم).
 - n8n source: `n8n/oxira-design-accounts.workflow.ts` (workflow "Oxira Design — Accounts", id kQlWsL3JiIVlDEut).
+
+## IFC export and AR
+
+- `src/lib/ifc.ts`: small IFC4 writer (storeys, walls, doors and windows in real openings, slabs, IfcSpace rooms; metres, non-ASCII names as \X2\). Used by the plan designer (`src/scripts/planner/ifc.ts`, all floors, 3.2 m storeys) and the studio (`src/scripts/studio/ifc.ts`, one storey at the chosen wall height). Checked with ifcopenshell: no schema issues, geometry builds.
+- AR in the studio: the model (without ceilings, centred) goes to `<model-viewer>` (`@google/model-viewer` 4.3.1, loaded on demand): WebXR on Android Chrome, Quick Look on iPhone (USDZ made in the browser). Table-top (1:20) or real size.

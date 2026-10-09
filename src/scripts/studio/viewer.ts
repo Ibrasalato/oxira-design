@@ -413,9 +413,23 @@ export class Viewer {
     return root;
   }
 
-  async exportGLB(): Promise<Blob> {
+  /** dollhouse: without the ceiling, for AR */
+  async exportGLB(dollhouse = false): Promise<Blob> {
     const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
     const root = this.exportRoot();
+    if (dollhouse) {
+      const drop: THREE.Object3D[] = [];
+      root.traverse((o) => { if (o.name === 'ceiling') drop.push(o); });
+      drop.forEach((o) => o.removeFromParent());
+      // centre on the floor so AR places the model around the tap point
+      const bb = new THREE.Box3().setFromObject(root);
+      const c = bb.getCenter(new THREE.Vector3());
+      const wrap = new THREE.Group();
+      root.position.set(root.position.x - c.x, root.position.y - bb.min.y, root.position.z - c.z);
+      wrap.add(root);
+      const buf = (await new GLTFExporter().parseAsync(wrap, { binary: true })) as ArrayBuffer;
+      return new Blob([buf], { type: 'model/gltf-binary' });
+    }
     const buf = (await new GLTFExporter().parseAsync(root, { binary: true })) as ArrayBuffer;
     return new Blob([buf], { type: 'model/gltf-binary' });
   }

@@ -316,6 +316,50 @@ export function startStudio(root: HTMLElement) {
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
   };
+  // AR: the current model as GLB in <model-viewer> (WebXR / Scene Viewer on Android, Quick Look on iPhone)
+  let arUrl = '';
+  async function openAr() {
+    if (!viewer) return;
+    const dlg = $('sd-ar-dlg') as HTMLDialogElement;
+    const box = $('sd-ar-box');
+    const msg = document.createElement('p');
+    msg.className = 'sd-small'; msg.textContent = T.ar.loading;
+    box.replaceChildren(msg);
+    dlg.showModal();
+    try {
+      const [glb] = await Promise.all([viewer.exportGLB(true), import('@google/model-viewer')]);
+      if (arUrl) URL.revokeObjectURL(arUrl);
+      arUrl = URL.createObjectURL(glb);
+      const mv = document.createElement('model-viewer') as HTMLElement & { canActivateAR?: boolean; activateAR?: () => void };
+      mv.setAttribute('src', arUrl);
+      mv.setAttribute('alt', fileName || 'Oxira Design');
+      mv.setAttribute('dir', 'ltr');
+      for (const a of ['ar', 'camera-controls', 'auto-rotate']) mv.setAttribute(a, '');
+      mv.setAttribute('ar-modes', 'webxr quick-look');
+      mv.setAttribute('shadow-intensity', '1');
+      mv.setAttribute('ar-placement', 'floor');
+      const scale = () => {
+        const full = (document.querySelector('input[name="sd-ar-scale"]:checked') as HTMLInputElement | null)?.value === 'full';
+        mv.setAttribute('ar-scale', full ? 'fixed' : 'auto');
+        mv.setAttribute('scale', full ? '1 1 1' : '0.05 0.05 0.05');
+      };
+      scale();
+      document.querySelectorAll<HTMLInputElement>('input[name="sd-ar-scale"]').forEach((r) => { r.onchange = scale; });
+      const slot = document.createElement('button');
+      slot.setAttribute('slot', 'ar-button'); slot.hidden = true;
+      mv.append(slot);
+      box.replaceChildren(mv);
+      const go = $('sd-ar-go') as HTMLButtonElement;
+      const ready = () => { const can = !!mv.canActivateAR; go.hidden = !can; $('sd-ar-hint').hidden = can; };
+      mv.addEventListener('load', ready);
+      setTimeout(ready, 1500);
+      go.onclick = () => mv.activateAR?.();
+    } catch {
+      msg.textContent = T.ar.fail;
+    }
+  }
+  $('sd-ar-dlg').addEventListener('close', () => { $('sd-ar-box').replaceChildren(); if (arUrl) { URL.revokeObjectURL(arUrl); arUrl = ''; } });
+
   const base = () => (fileName.replace(/\.[^.]+$/, '') || 'oxira-design') + '-oxira';
 
   // ------------------------------------------------------------ events
@@ -355,6 +399,12 @@ export function startStudio(root: HTMLElement) {
       if (k === 'png') save(await (await fetch(viewer.snapshot('image/png'))).blob(), base() + '.png');
       if (k === 'glb') save(await viewer.exportGLB(), base() + '.glb');
       if (k === 'obj') save(await viewer.exportOBJ(), base() + '.obj');
+      if (k === 'ifc' && plan) {
+        const { studioIfc } = await import('./ifc.ts');
+        const title = fileName.replace(/\.[^.]+$/, '') || 'Oxira Design';
+        save(new Blob([studioIfc(plan, { title, storey: title, typeName: (t) => T.types[t] })], { type: 'application/x-step' }), base() + '.ifc');
+      }
+      if (k === 'ar') openAr();
     }
   });
   document.addEventListener('click', (e) => {
