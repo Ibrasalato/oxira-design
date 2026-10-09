@@ -36,8 +36,9 @@ const ld = {
   name: 'Oxira Design',
   serviceType: 'AutoCAD to 3D interior design',
   url: new URL(link('ar', '/'), site).href,
-  areaServed: 'Worldwide',
-  provider: { '@type': 'Organization', name: 'Oxira', alternateName: 'أوكسيرا', url: CONTACT.main, email: CONTACT.email, telephone: CONTACT.phoneHref.replace('tel:', '') },
+  description: c.description,
+  areaServed: [{ '@type': 'Country', name: 'Saudi Arabia' }, 'Worldwide'],
+  provider: { '@type': 'Organization', name: 'Oxira', alternateName: 'أوكسيرا', url: CONTACT.main, logo: new URL(asset('favicon.svg'), site).href, email: CONTACT.email, telephone: CONTACT.phoneHref.replace('tel:', ''), address: { '@type': 'PostalAddress', streetAddress: '426 Al Sulaymaniyah, Al Urubah Rd.', addressLocality: 'Riyadh', addressCountry: 'SA' } },
 };
 ---
 <!doctype html>

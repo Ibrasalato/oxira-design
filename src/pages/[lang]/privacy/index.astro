@@ -7,4 +7,4 @@ export function getStaticPaths() {
 }
 const lang = Astro.params.lang as Lang;
 ---
-<Base lang={lang} path="/privacy/" title={`${t[lang].privacy.title} | Oxira Design`}><Privacy lang={lang} /></Base>
+<Base lang={lang} path="/privacy/" title={`${t[lang].privacy.title} | Oxira Design`} description={t[lang].privacy.sections.slice(0, 2).map((x) => x.p).join(' ').slice(0, 155)}><Privacy lang={lang} /></Base>
