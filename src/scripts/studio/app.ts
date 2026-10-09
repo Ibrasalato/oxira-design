@@ -8,7 +8,7 @@ import type { StyleId } from './styles.ts';
 import { st } from '../../i18n/studio';
 import type { Lang } from '../../i18n/content';
 
-type Cfg = { lang: Lang; render: string; finishing: string; listing: string; tour: string; samples: Record<string, string>; whatsapp: string };
+type Cfg = { lang: Lang; render: string; finishing: string; listing: string; tour: string; planner: string; samples: Record<string, string>; whatsapp: string };
 
 export function startStudio(root: HTMLElement) {
   const cfg: Cfg = JSON.parse(root.dataset.cfg!);
@@ -43,6 +43,14 @@ export function startStudio(root: HTMLElement) {
     if (f.size > 40 * 1048576) { alert(T.upload.tooBig); return; }
     const head = new Uint8Array(await f.slice(0, 6).arrayBuffer());
     const isDwg = /\.dwg$/i.test(f.name) || String.fromCharCode(...head).startsWith('AC10');
+    const isPdf = /\.pdf$/i.test(f.name) || String.fromCharCode(...head).startsWith('%PDF');
+    if (isPdf) {
+      // a PDF has no wall layers to read: hand it to the team, or start from the plan designer
+      dwgBlob = f;
+      alert(`${T.upload.pdf}<br><button type="button" class="btn btn-amber" data-sd-order>${T.upload.sendPdf}</button> <a href="${cfg.planner}">${T.upload.planLink}</a>`);
+      exposeAttach();
+      return;
+    }
     if (isDwg) {
       dwgBlob = f;
       alert(`${T.upload.dwg}<br><button type="button" class="btn btn-amber" data-sd-order>${T.upload.sendDwg}</button>`);
@@ -488,4 +496,10 @@ export function startStudio(root: HTMLElement) {
   // ?sample=apartment|studio opens a sample directly
   const q = new URLSearchParams(location.search).get('sample');
   if (q && cfg.samples[q]) (root.querySelector(`[data-sample="${q}"]`) as HTMLElement)?.click();
+  // ?from=plan opens the floor handed over by the plan designer
+  if (new URLSearchParams(location.search).get('from') === 'plan') {
+    let txt: string | null = null, nm = 'oxira-plan.dxf';
+    try { txt = sessionStorage.getItem('ox-plan-dxf'); nm = sessionStorage.getItem('ox-plan-name') || nm; } catch {}
+    if (txt) loadText(txt, nm, new Blob([txt], { type: 'application/dxf' }));
+  }
 }

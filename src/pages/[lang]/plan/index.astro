@@ -1,0 +1,11 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Planner from '../../../components/Planner.astro';
+import { languages, type Lang } from '../../../i18n/content';
+import { pl } from '../../../i18n/planner';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar').map((l) => ({ params: { lang: l.code } }));
+}
+const lang = Astro.params.lang as Lang;
+---
+<Base lang={lang} path="/plan/" title={`${pl[lang].title} | Oxira Design`} description={pl[lang].meta}><Planner lang={lang} /></Base>

@@ -265,7 +265,7 @@ const prepareOrder = node({
         "const item = $input.first();\n" +
         "const b = item.json.body || {};\n" +
         "const s = (v, n) => String(v == null ? '' : v).trim().slice(0, n);\n" +
-        "const pkg = ['quick', 'design', 'premium', 'developer'].includes(b.package) ? b.package : 'design';\n" +
+        "const pkg = ['quick', 'design', 'premium', 'developer', 'plan'].includes(b.package) ? b.package : 'design';\n" +
         "let summary = null;\n" +
         "try { summary = b.summary ? JSON.parse(String(b.summary).slice(0, 30000)) : null; } catch (e) { summary = null; }\n" +
         "const area = Math.max(0, Math.min(20000, parseFloat(b.area) || (summary && Number(summary.totalArea)) || 0));\n" +
@@ -273,12 +273,13 @@ const prepareOrder = node({
         "if (pkg === 'quick') { amount = Math.round(PRICES.quick * (1 + PRICES.vat) * 100) / 100; note = 'سريعة: ' + PRICES.quick + ' ريال + الضريبة = ' + amount; }\n" +
         "else if (pkg === 'design') { const est = Math.max(PRICES.designMin, Math.round(area * PRICES.designPerM2)); note = area ? 'تصميم داخلي (تقديري): ' + est + ' ريال + الضريبة لمساحة ' + area + ' م²' : 'تصميم داخلي: عرض سعر بعد مراجعة المخطط'; }\n" +
         "else if (pkg === 'developer') note = 'المطورين: من ' + PRICES.developer + ' ريال شهرياً + الضريبة';\n" +
+        "else if (pkg === 'plan') note = 'تصميم مخطط (صفحة صمّم مخططك): عرض سعر بعد المراجعة';\n" +
         "else note = 'متكاملة: عرض سعر حسب المشروع';\n" +
         "const binary = {};\n" +
         "const files = [];\n" +
         "for (const [k, v] of Object.entries(item.binary || {})) {\n" +
         "  const fn = String((v && v.fileName) || k);\n" +
-        "  if (!/\\.(dxf|dwg|pdf|png|jpe?g|zip|glb)$/i.test(fn)) continue;\n" +
+        "  if (!/\\.(dxf|dwg|pdf|png|jpe?g|webp|heic|zip|glb)$/i.test(fn)) continue;\n" +
         "  binary[k] = v;\n" +
         "  files.push(fn);\n" +
         "}\n" +
@@ -376,7 +377,7 @@ const emailTeam = node({
     parameters: {
       fromEmail: 'Oxira Design <info@oxira.sa>',
       toEmail: 'info@oxira.sa',
-      subject: expr("{{ 'طلب تصميم جديد #' + $json.id + ' (' + ({ quick: 'سريعة', design: 'تصميم داخلي', premium: 'متكاملة', developer: 'مطورين' })[$json.package] + '): ' + $json.contact_name }}"),
+      subject: expr("{{ 'طلب تصميم جديد #' + $json.id + ' (' + ({ quick: 'سريعة', design: 'تصميم داخلي', premium: 'متكاملة', developer: 'مطورين', plan: 'تصميم مخطط' })[$json.package] + '): ' + $json.contact_name }}"),
       emailFormat: 'html',
       html: expr("{{ (() => { const p = $json; const esc = (s) => String(s === undefined || s === null || s === '' ? '-' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\\n/g, '<br>'); const rows = [['رقم الطلب', '#' + p.id], ['الباقة', p.package], ['السعر', p.price_note], ['الاسم', p.contact_name], ['الجوال', p.phone], ['البريد', p.email], ['المدينة', p.city], ['المساحة', p.area ? p.area + ' م²' : ''], ['الستايل', p.style], ['الغرف من الاستوديو', p.rooms], ['الملاحظات', p.notes], ['الملفات المرفقة', p.files], ['لغة الصفحة', p.lang], ['الوقت', $now.setZone('Asia/Riyadh').toFormat('yyyy-MM-dd HH:mm')]]; return '<div dir=\"rtl\" style=\"font-family:Tahoma,Arial,sans-serif;font-size:15px;line-height:1.7;color:#0A253E\"><h2 style=\"margin:0 0 12px\">طلب جديد من Oxira Design</h2><table style=\"border-collapse:collapse;width:100%;max-width:720px\">' + rows.map(([k, v]) => '<tr><th style=\"text-align:right;padding:9px 12px;background:#F4F6F8;border:1px solid #DCE3EA;width:160px\">' + k + '</th><td style=\"padding:9px 12px;border:1px solid #DCE3EA\">' + esc(v) + '</td></tr>').join('') + '</table><p style=\"color:#556779;font-size:13px\">الملفات مرفقة بهذا الإيميل، والتفاصيل الكاملة (ومنها المساحات والكميات) في جدول oxira_design_orders.</p></div>'; })() }}"),
       options: { appendAttribution: false, fileAttachments: expr('{{ $json.attach }}'), replyTo: expr("{{ $json.email || 'info@oxira.sa' }}") }

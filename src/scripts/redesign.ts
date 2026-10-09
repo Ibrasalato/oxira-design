@@ -1,6 +1,7 @@
 // Room photo redesign page. Talks to the n8n workflow "Oxira Design — Room redesign":
 // oxira-redesign-render (photo → image), oxira-redesign-wallet (balance), oxira-redesign-buy (Moyasar link).
 // The wallet id lives in localStorage and can be restored on another device with ?w=<id>.
+import { isPdf, pdfToImage } from './pdfImage';
 
 interface Cfg {
   lang: string;
@@ -44,10 +45,11 @@ async function post<T>(url: string, body: unknown, timeout = 30000): Promise<T> 
   }
 }
 
-/** Reads an image file and returns a JPEG data URL no larger than MAX_SIDE on its long side. */
-function shrink(file: File): Promise<string> {
+/** Reads an image (file or data URL) and returns a JPEG data URL no larger than MAX_SIDE on its long side. */
+function shrink(file: Blob | string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
+    const own = typeof file !== 'string';
+    const url = own ? URL.createObjectURL(file) : file;
     const img = new Image();
     img.onload = () => {
       const k = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
@@ -56,14 +58,14 @@ function shrink(file: File): Promise<string> {
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
       const ctx = c.getContext('2d');
-      if (!ctx) { URL.revokeObjectURL(url); reject(new Error('canvas')); return; }
+      if (!ctx) { if (own) URL.revokeObjectURL(url); reject(new Error('canvas')); return; }
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
-      URL.revokeObjectURL(url);
+      if (own) URL.revokeObjectURL(url);
       resolve(c.toDataURL('image/jpeg', 0.86));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image')); };
+    img.onerror = () => { if (own) URL.revokeObjectURL(url); reject(new Error('image')); };
     img.src = url;
   });
 }
@@ -154,9 +156,10 @@ export function initRedesign() {
 
   // Photo
   const usePhoto = async (file?: File | null) => {
-    if (!file || !/^image\//.test(file.type)) { if (file) say(cfg.t.err.invalid, true); return; }
+    if (!file || !(/^image\//.test(file.type) || isPdf(file))) { if (file) say(cfg.t.err.invalid, true); return; }
     try {
-      image = await shrink(file);
+      // a PDF (a room photo or a page from a catalogue) is used through its first page
+      image = await shrink(isPdf(file) ? await pdfToImage(file, MAX_SIDE) : file);
       before.src = image;
       compare.dataset.state = 'photo';
       actions.hidden = true;

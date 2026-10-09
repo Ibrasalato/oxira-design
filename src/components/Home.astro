@@ -5,6 +5,7 @@ import { link, asset } from '../lib/routes';
 import Icon from './Icon.astro';
 import OrderForm from './OrderForm.astro';
 import { GUIDES, guideCopy, guidePath, HUB_PATH, ui, isGuideLang } from '../i18n/guides';
+import { pl } from '../i18n/planner';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
@@ -24,6 +25,7 @@ const cards = [
 const audienceIcons = ['user', 'building', 'megaphone', 'pencil'];
 // Service guides exist in Arabic and English only.
 const gl = isGuideLang(lang) ? lang : null;
+const pr = pl[lang].promo;
 ---
 <section class="hero">
   <div class="wrap hero-grid">
@@ -64,6 +66,22 @@ const gl = isGuideLang(lang) ? lang : null;
         <li><span class="steps-n">{i + 1}</span><h3>{it.t}</h3><p>{it.d}</p></li>
       ))}
     </ol>
+  </div>
+</section>
+
+<section class="section-tight">
+  <div class="wrap">
+    <div class="plan-promo">
+      <div>
+        <p class="label">{pr.label}</p>
+        <h2>{pr.title}</h2>
+        <p>{pr.body}</p>
+      </div>
+      <div class="plan-promo-cta">
+        <a class="btn btn-amber" href={link(lang, '/plan/')}><Icon name="pencil" />{pr.ctaNew}</a>
+        <a class="btn btn-ghost-light" href={`${link(lang, '/plan/')}?path=upload`}><Icon name="upload" />{pr.ctaUp}</a>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -319,4 +337,10 @@ const gl = isGuideLang(lang) ? lang : null;
   @media (max-width: 600px) {
     .pk, .steps, .aud, .feats, .gdl { grid-template-columns: 1fr; }
   }
+  .plan-promo { display: grid; grid-template-columns: minmax(0, 1.5fr) auto; gap: 1.5rem 2.5rem; align-items: center; padding: clamp(1.5rem, 4vw, 2.75rem); border-radius: var(--radius-lg); background: var(--navy); color: #fff; }
+  .plan-promo .label { color: var(--cyan); }
+  .plan-promo h2 { font-size: var(--s2); margin-top: .4rem; }
+  .plan-promo p:last-child { color: var(--muted-on-navy); margin-top: .6rem; max-width: 46rem; }
+  .plan-promo-cta { display: grid; gap: .6rem; }
+  @media (max-width: 760px) { .plan-promo { grid-template-columns: 1fr; } }
 </style>

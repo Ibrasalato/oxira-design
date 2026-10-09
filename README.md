@@ -13,6 +13,7 @@ npm install
 npm run dev        # http://localhost:4321
 npm run build      # static site in dist/
 npm run test:plan  # runs the DXF engine on the sample plans, writes SVG previews to /tmp/claude-0/plan-test
+npm run test:planner  # generates concept plans, reads them back with the DXF engine, writes SVG + DXF to /tmp/claude-0/planner-test
 ```
 
 ## Where things live
@@ -24,6 +25,11 @@ npm run test:plan  # runs the DXF engine on the sample plans, writes SVG preview
 | Landing page sections | `src/components/Home.astro` |
 | Studio page (panel, viewport, dialogs) | `src/components/Studio.astro` |
 | Order form (used on the landing page and inside the studio) | `src/components/OrderForm.astro` |
+| "Design my plan" page (plot + programme → editable concept plan, or upload a plan to complete) | `src/components/Planner.astro`, copy in `src/i18n/planner.ts` |
+| Plan generator, slicing-tree editor, doors/windows | `src/scripts/planner/model.ts` |
+| Plan SVG and DXF (AutoCAD R12, opens in the studio) | `src/scripts/planner/render.ts` |
+| Planner page controller | `src/scripts/planner/app.ts` |
+| PDF first page → image (pdf.js, loaded on demand) | `src/scripts/pdfImage.ts` |
 | Chat widget | `src/components/Chat.astro` |
 | DXF reader (blocks, units, layer roles) | `src/scripts/studio/dxf.ts` |
 | Plan engine: walls from parallel lines, openings, rooms, areas | `src/scripts/studio/plan.ts` |
@@ -56,7 +62,7 @@ Everything runs in the visitor's browser; nothing is uploaded unless they order 
 | Endpoint | Purpose |
 | --- | --- |
 | `POST /webhook/oxira-design-chat` | AI chat agent (`{ sessionId, message, lang, page, context }` → `{ reply }`). Saves requests to `oxira_design_leads` and emails info@oxira.sa |
-| `POST /webhook/oxira-design-order` | Order form, multipart with files. Saves to `oxira_design_orders`, emails info@oxira.sa with attachments, confirms to the client. Quick package → Moyasar invoice → `{ payUrl }` |
+| `POST /webhook/oxira-design-order` | Order form and the plan page (`package = plan`, quote only), multipart with files. Saves to `oxira_design_orders`, emails info@oxira.sa with attachments, confirms to the client. Quick package → Moyasar invoice → `{ payUrl }` |
 | `POST /webhook/oxira-design-moyasar-callback` | Moyasar callback for design invoices: confirms with Moyasar, marks the order paid, emails team and client |
 | `POST /webhook/oxira-design-payment-status` | `{ orderId }` → payment status |
 | `POST /webhook/oxira-design-render` | AI render from a studio snapshot, 3 per visitor per day and a global daily cap, logged in `oxira_design_renders` |
@@ -68,3 +74,15 @@ Prices are checked on the server (n8n node "Price order"); keep them in sync wit
 
 DNS: CNAME `design` → `ibrasalato.github.io`. In the repo's **Settings → Pages**: Source **GitHub Actions**,
 custom domain `design.oxira.sa`, then **Enforce HTTPS**.
+
+## Plan designer (/plan/)
+
+The visitor enters the plot (width, depth, street, setbacks), picks villa, duplex, apartment building,
+shops + apartments or istiraha, the rooms, and the drawings they need. A concept plan is drawn per floor
+in the browser: every floor is a slicing tree, so walls can be dragged, rooms split, removed, swapped and
+renamed; doors and windows are derived again after every edit. The plan downloads as DXF, prints to PDF,
+and any floor opens in the 3D studio (`/studio/?from=plan`). Or the visitor uploads a plan (PDF, DWG, DXF,
+images) and says what to complete. Requests go to the order webhook with `package = plan`; the brief is in
+`notes` (Arabic, for the team) and `summary` (JSON), the generated plan is attached as `oxira-plan.dxf`.
+Every upload on the site accepts PDF: the redesign page uses the first page as the photo, the studio sends
+PDFs to the team.

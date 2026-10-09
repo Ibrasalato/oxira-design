@@ -47,8 +47,11 @@ export function guessRole(name: string): Role {
 
 const UNIT: Record<number, number> = { 1: 0.0254, 2: 0.3048, 4: 0.001, 5: 0.01, 6: 1, 14: 0.1 };
 
+/** AutoCAD writes non-ASCII text as \\U+XXXX (and \\M+nXXXX in old files); decode the Unicode form. */
+const uni = (s: string) => s.replace(/\\U\+([0-9A-Fa-f]{4,5})/g, (_, h) => String.fromCodePoint(parseInt(h, 16)));
+
 function cleanMText(s: string) {
-  return s
+  return uni(s)
     .replace(/\\P/g, ' ')
     .replace(/\\[A-Za-z][^;\\{}]*;/g, '')
     .replace(/\\[~ ]/g, ' ')
@@ -135,7 +138,7 @@ export function readDxf(text: string): Flat {
         case 'MTEXT': {
           if (!outTexts) break;
           const p = e.type === 'TEXT' && (e.halign || e.valign) && e.endPoint ? e.endPoint : e.position || e.startPoint;
-          const s = e.type === 'MTEXT' ? cleanMText(String(e.text || '')) : String(e.text || '').trim();
+          const s = e.type === 'MTEXT' ? cleanMText(String(e.text || '')) : uni(String(e.text || '')).trim();
           if (p && s) outTexts.push({ p: ap(m, p.x, p.y), text: s, layer, h: Math.abs((e.textHeight || e.height || 0) * Math.hypot(m[0], m[1])) });
           break;
         }

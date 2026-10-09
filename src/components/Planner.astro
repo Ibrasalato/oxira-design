@@ -1,0 +1,410 @@
+---
+// "Design my plan": the visitor describes the plot and the building, gets an editable concept plan
+// (or uploads a plan to be completed) and sends a request to the team.
+// Engine: src/scripts/planner/{model,render}.ts, controller: src/scripts/planner/app.ts.
+// Requests go to the n8n "Oxira Design" order webhook with package = "plan".
+import { N8N, CONTACT, type Lang } from '../i18n/content';
+import { pl, PLAN_TYPES, FORMATS, FACADES, BTYPES, STATES } from '../i18n/planner';
+import { link } from '../lib/routes';
+import { KINDS, defaultBrief, frontSetback } from '../scripts/planner/model';
+import Icon from './Icon.astro';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const p = pl[lang];
+const d = defaultBrief();
+d.setback.front = frontSetback(d.land.streetW);
+const cfg = { lang, order: import.meta.env.PUBLIC_ORDER_ENDPOINT || N8N.order, studio: link(lang, '/studio/'), whatsapp: CONTACT.whatsapp };
+const num = (name: string, label: string, value: number, min: number, max: number, step = 1, unit = '') => ({ name, label, value, min, max, step, unit });
+const landFields = [num('land.w', p.land.w, d.land.w, 6, 300, 0.5, p.land.m), num('land.d', p.land.d, d.land.d, 6, 300, 0.5, p.land.m)];
+const villaNums = [
+  num('villa.floors', p.villa.floors, d.villa.floors, 1, 4), num('villa.bedrooms', p.villa.bedrooms, d.villa.bedrooms, 0, 10),
+  num('villa.masters', p.villa.masters, d.villa.masters, 0, 4), num('villa.baths', p.villa.baths, d.villa.baths, 0, 4),
+];
+const villaChecks = ['roof', 'ensuiteAll', 'majlis', 'ladies', 'dining', 'maid', 'driver', 'laundry', 'store', 'office', 'guestBed', 'prayer', 'lift'] as const;
+const istirahaHide = new Set(['villa.floors', 'villa.masters', 'villa.baths', 'roof', 'ensuiteAll', 'maid', 'laundry', 'office', 'guestBed', 'prayer', 'lift', 'majlis']);
+const bldNums = [num('bld.floors', p.bld.floors, d.bld.floors, 1, 20), num('bld.perFloor', p.bld.perFloor, d.bld.perFloor, 1, 4), num('bld.beds', p.bld.beds, d.bld.beds, 1, 5)];
+const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
+---
+<section class="page-hero pl-hero">
+  <div class="wrap">
+    <p class="label">{p.kicker}</p>
+    <h1>{p.h1}</h1>
+    <p class="lead">{p.lead}</p>
+    <ol class="pl-steps">{p.steps.map((s, i) => <li><b>{i + 1}</b>{s}</li>)}</ol>
+  </div>
+</section>
+
+<section class="pl" id="pl" data-cfg={JSON.stringify(cfg)} data-path="new">
+  <div class="wrap">
+    <h2 class="pl-h2">{p.path.title}</h2>
+    <div class="pl-paths" role="radiogroup">
+      <button type="button" class="pl-path" data-go="new" role="radio" aria-checked="true">
+        <Icon name="pencil" /><span><b>{p.path.newT}</b><small>{p.path.newD}</small></span>
+      </button>
+      <button type="button" class="pl-path" data-go="upload" role="radio" aria-checked="false">
+        <Icon name="upload" /><span><b>{p.path.upT}</b><small>{p.path.upD}</small></span>
+      </button>
+    </div>
+
+    <!-- ===================================================== new plan -->
+    <div class="pl-grid" data-only="new">
+      <form class="pl-panel" id="pl-brief" autocomplete="off" onsubmit="return false">
+        <fieldset class="pl-sec">
+          <legend><b>1</b>{p.land.title}</legend>
+          <div class="pl-row2">
+            {landFields.map((f) => (
+              <label class="pl-f"><span>{f.label}</span><span class="pl-unit"><input type="number" name={f.name} value={f.value} min={f.min} max={f.max} step={f.step} inputmode="decimal" dir="ltr" /><i>{f.unit}</i></span></label>
+            ))}
+          </div>
+          <p class="pl-area">{p.land.area}: <b id="pl-area">{d.land.w * d.land.d}</b> {p.m2}</p>
+          <div class="pl-row2">
+            <label class="pl-f"><span>{p.land.streets}</span>
+              <select name="land.streets">{[1, 2, 3, 4].map((n) => <option value={n} selected={n === d.land.streets}>{n}</option>)}</select>
+            </label>
+            <label class="pl-f"><span>{p.land.streetW}</span><span class="pl-unit"><input type="number" name="land.streetW" value={d.land.streetW} min="6" max="80" step="1" inputmode="decimal" dir="ltr" /><i>{p.land.m}</i></span></label>
+          </div>
+          <details class="pl-more">
+            <summary>{p.land.setbacks}: <span id="pl-sb-sum" dir="ltr">{d.setback.front} · {d.setback.side} · {d.setback.back}</span></summary>
+            <div class="pl-row3">
+              <label class="pl-f"><span>{p.land.front}</span><input type="number" name="setback.front" value={d.setback.front} min="0" max="15" step="0.5" dir="ltr" /></label>
+              <label class="pl-f"><span>{p.land.side}</span><input type="number" name="setback.side" value={d.setback.side} min="0" max="10" step="0.5" dir="ltr" /></label>
+              <label class="pl-f"><span>{p.land.back}</span><input type="number" name="setback.back" value={d.setback.back} min="0" max="10" step="0.5" dir="ltr" /></label>
+            </div>
+            <p class="pl-small">{p.land.setNote}</p>
+          </details>
+        </fieldset>
+
+        <fieldset class="pl-sec">
+          <legend><b>2</b>{p.type.title}</legend>
+          <div class="pl-types">
+            {BTYPES.map((t) => (
+              <label class="pl-type"><input type="radio" name="type" value={t} checked={t === d.type} /><span><b>{p.type.names[t]}</b><small>{p.type.desc[t]}</small></span></label>
+            ))}
+          </div>
+
+          <div class="pl-sub" data-for="villa duplex istiraha">
+            <h3>{p.villa.title}</h3>
+            <div class="pl-row2">
+              {villaNums.map((f) => (
+                <label class="pl-f" data-hide-ist={istirahaHide.has(f.name) ? '' : undefined}><span>{f.label}</span><span class="pl-step"><button type="button" data-step="-1" aria-label="-">−</button><input type="number" name={f.name} value={f.value} min={f.min} max={f.max} step="1" dir="ltr" /><button type="button" data-step="1" aria-label="+">+</button></span></label>
+              ))}
+            </div>
+            <div class="pl-checks">
+              {villaChecks.map((k) => (
+                <label class="pl-check" data-hide-ist={istirahaHide.has(k) ? '' : undefined}><input type="checkbox" name={`villa.${k}`} checked={d.villa[k]} /><span>{p.villa[k]}</span></label>
+              ))}
+            </div>
+            <label class="pl-f pl-inline"><span>{p.villa.kitchen}</span>
+              <select name="villa.kitchen"><option value="closed">{p.villa.closed}</option><option value="open">{p.villa.open}</option></select>
+            </label>
+          </div>
+
+          <div class="pl-sub" data-for="building mixed" hidden>
+            <h3>{p.bld.title}</h3>
+            <div class="pl-row2">
+              {bldNums.map((f) => (
+                <label class="pl-f"><span>{f.label}</span><span class="pl-step"><button type="button" data-step="-1" aria-label="-">−</button><input type="number" name={f.name} value={f.value} min={f.min} max={f.max} step="1" dir="ltr" /><button type="button" data-step="1" aria-label="+">+</button></span></label>
+              ))}
+              <label class="pl-f" data-hide-mixed><span>{p.bld.ground}</span>
+                <select name="bld.ground"><option value="parking">{p.bld.gParking}</option><option value="shops">{p.bld.gShops}</option><option value="apartments">{p.bld.gApts}</option></select>
+              </label>
+            </div>
+            <div class="pl-checks">
+              {bldChecks.map((k) => <label class="pl-check"><input type="checkbox" name={`bld.${k}`} checked={d.bld[k]} /><span>{p.bld[k]}</span></label>)}
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="pl-sec">
+          <legend><b>3</b>{p.planTypes.title}</legend>
+          <p class="pl-small">{p.planTypes.hint}</p>
+          <div class="pl-chips" data-group="planTypes">
+            {PLAN_TYPES.map((k) => <label class="pl-chip"><input type="checkbox" name="planTypes" value={k} checked={k === 'arch' || k === 'facade'} /><span>{p.planTypes.names[k]}</span></label>)}
+          </div>
+          <div class="pl-row2">
+            <label class="pl-f"><span>{p.planTypes.facade}</span>
+              <select name="facade">{FACADES.map((k) => <option value={k}>{p.planTypes.facades[k]}</option>)}</select>
+            </label>
+            <div class="pl-f"><span>{p.planTypes.formats}</span>
+              <div class="pl-chips pl-chips-s">{FORMATS.map((k) => <label class="pl-chip"><input type="checkbox" name="formats" value={k} checked={k !== 'max'} /><span>{p.planTypes.formatNames[k]}</span></label>)}</div>
+            </div>
+          </div>
+        </fieldset>
+
+        <button type="button" class="btn btn-amber pl-wide" id="pl-gen"><Icon name="pencil" />{p.gen}</button>
+        <a class="btn btn-navy pl-wide" href="#pl-order"><Icon name="people" />{p.form.title}</a>
+      </form>
+
+      <div class="pl-stage">
+        <div class="pl-bar">
+          <div class="pl-tabs" id="pl-tabs" role="tablist"></div>
+          <div class="pl-tools">
+            <button type="button" class="pl-icon" id="pl-undo" title={p.editor.undo} aria-label={p.editor.undo} disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+            <button type="button" class="pl-link" id="pl-regen" hidden>{p.regen}</button>
+          </div>
+        </div>
+        <div class="pl-canvas-wrap">
+          <div class="pl-canvas" id="pl-canvas"><p class="pl-empty">{p.editor.empty}</p></div>
+          <div class="pl-roompanel" id="pl-room" hidden>
+            <div class="pl-room-h"><b>{p.editor.room}</b><button type="button" class="pl-x" id="pl-room-x" aria-label={p.editor.close}>×</button></div>
+            <div class="pl-row2">
+              <label class="pl-f"><span>{p.editor.kind}</span><select id="pl-room-kind">{KINDS.map((k) => <option value={k}>{p.kinds[k]}</option>)}</select></label>
+              <label class="pl-f"><span>{p.editor.name}</span><input id="pl-room-name" maxlength="40" /></label>
+            </div>
+            <p class="pl-small">{p.editor.size}: <b id="pl-room-size" dir="ltr"></b></p>
+            <div class="pl-room-btns">
+              <button type="button" class="btn btn-ghost" id="pl-split">{p.editor.split}</button>
+              <button type="button" class="btn btn-ghost" id="pl-swap">{p.editor.swap}</button>
+              <button type="button" class="btn btn-ghost pl-danger" id="pl-merge">{p.editor.merge}</button>
+            </div>
+            <p class="pl-swapnote" id="pl-swapnote" hidden>{p.editor.swapHint} <button type="button" class="pl-link" id="pl-swap-x">{p.editor.cancel}</button></p>
+          </div>
+        </div>
+        <p class="pl-hint"><Icon name="pencil" />{p.editor.hint}</p>
+        <div class="pl-warn" id="pl-warn" hidden></div>
+
+        <dl class="pl-stats" id="pl-stats"></dl>
+        <div class="pl-exports">
+          <span>{p.editor.exports}</span>
+          <button type="button" class="btn btn-ghost" id="pl-dxf"><Icon name="file" />{p.editor.dxf}</button>
+          <button type="button" class="btn btn-ghost" id="pl-print"><Icon name="file" />{p.editor.print}</button>
+          <button type="button" class="btn btn-navy" id="pl-3d"><Icon name="cube" />{p.editor.studio}</button>
+        </div>
+        <p class="pl-small pl-note">{p.editor.note}</p>
+      </div>
+    </div>
+
+    <!-- ===================================================== upload a plan -->
+    <div class="pl-upgrid" data-only="upload">
+      <div class="pl-sec">
+        <h3 class="pl-h3"><b>1</b>{p.upload.title}</h3>
+        <label class="pl-drop" id="pl-drop">
+          <input type="file" id="pl-files" multiple accept=".pdf,application/pdf,.dwg,.dxf,.png,.jpg,.jpeg,.webp,.heic,.zip" />
+          <Icon name="upload" />
+          <b>{p.upload.drop}</b>
+          <small>{p.upload.hint}</small>
+        </label>
+        <ul class="pl-files" id="pl-file-list"></ul>
+        <p class="pl-small pl-studio-hint" id="pl-dxf-hint" hidden><Icon name="cube" /><a href="#" id="pl-dxf-open">{p.upload.openStudio}</a></p>
+        <h3 class="pl-h3 pl-mt">{p.upload.state}</h3>
+        <div class="pl-chips">{STATES.map((k, i) => <label class="pl-chip"><input type="radio" name="state" value={k} checked={i === 1} /><span>{p.upload.states[k]}</span></label>)}</div>
+      </div>
+      <div class="pl-sec">
+        <h3 class="pl-h3"><b>2</b>{p.upload.need}</h3>
+        <div class="pl-chips" id="pl-up-types">
+          {PLAN_TYPES.map((k) => <label class="pl-chip"><input type="checkbox" name="upTypes" value={k} checked={k === 'arch'} /><span>{p.planTypes.names[k]}</span></label>)}
+        </div>
+        <div class="pl-row2 pl-mt">
+          <label class="pl-f"><span>{p.type.title}</span><select id="pl-up-btype">{BTYPES.map((t) => <option value={t}>{p.type.names[t]}</option>)}</select></label>
+          <label class="pl-f"><span>{p.planTypes.facade}</span><select id="pl-up-facade">{FACADES.map((k) => <option value={k}>{p.planTypes.facades[k]}</option>)}</select></label>
+          <label class="pl-f"><span>{p.land.area}</span><span class="pl-unit"><input type="number" id="pl-up-area" min="20" max="100000" step="1" inputmode="numeric" dir="ltr" /><i>{p.m2}</i></span></label>
+          <div class="pl-f"><span>{p.planTypes.formats}</span>
+            <div class="pl-chips pl-chips-s">{FORMATS.map((k) => <label class="pl-chip"><input type="checkbox" name="upFormats" value={k} checked={k !== 'max'} /><span>{p.planTypes.formatNames[k]}</span></label>)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-tight bg-paper pl-order" id="pl-order">
+  <div class="wrap pl-order-grid">
+    <div>
+      <h2>{p.form.title}</h2>
+      <p class="pl-sub-t">{p.form.sub}</p>
+      <p class="pl-attached" id="pl-attached"><Icon name="check" />{p.form.attached}</p>
+    </div>
+    <form class="pl-form" id="pl-form" novalidate>
+      <div class="pl-row2">
+        <label class="pl-f"><span>{p.form.name} *</span><input name="name" required autocomplete="name" maxlength="120" /></label>
+        <label class="pl-f"><span>{p.form.phone} *</span><input name="phone" required type="tel" autocomplete="tel" dir="ltr" maxlength="40" /></label>
+        <label class="pl-f"><span>{p.form.email}</span><input name="email" type="email" autocomplete="email" dir="ltr" maxlength="160" /></label>
+        <label class="pl-f"><span>{p.form.city}</span><input name="city" autocomplete="address-level2" maxlength="120" /></label>
+      </div>
+      <label class="pl-f"><span>{p.form.notes}</span><textarea name="notes" rows="3" maxlength="2000"></textarea></label>
+      <div class="pl-f">
+        <span>{p.extra.title}</span>
+        <label class="pl-drop pl-drop-s"><input type="file" id="pl-extra" multiple accept=".pdf,application/pdf,.png,.jpg,.jpeg,.webp,.heic,.dwg,.dxf,.zip" /><small>{p.extra.hint}</small></label>
+        <ul class="pl-files" id="pl-extra-list"></ul>
+      </div>
+      <input type="text" name="company_website" tabindex="-1" autocomplete="off" class="pl-hp" aria-hidden="true" />
+      <button type="submit" class="btn btn-amber pl-wide" id="pl-submit">{p.form.submit}</button>
+      <p class="pl-small">{p.form.consent} <a href={link(lang, '/privacy/')}>{p.form.privacy}</a>.</p>
+      <div class="pl-msg" id="pl-msg" role="status" aria-live="polite" hidden></div>
+    </form>
+  </div>
+</section>
+
+<div class="pl-print" id="pl-print" aria-hidden="true"></div>
+
+<script>
+  import { startPlanner } from '../scripts/planner/app';
+  const root = document.getElementById('pl');
+  if (root) startPlanner(root);
+</script>
+
+<style is:global>
+  .pl-hero { padding-bottom: 1.25rem; }
+  .pl-steps { list-style: none; padding: 0; margin: 1.75rem 0 0; display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; color: var(--muted); }
+  .pl-steps li { display: flex; align-items: center; gap: .55rem; }
+  .pl-steps b, .pl-sec legend b, .pl-h3 b { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-size: .9rem; flex: none; }
+  .pl { padding-block: 1rem clamp(3rem, 6vw, 5rem); }
+  .pl-h2 { font-size: var(--s1); margin-bottom: .9rem; }
+  .pl-paths { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-bottom: 2rem; }
+  .pl-path { display: flex; gap: .9rem; align-items: flex-start; text-align: start; padding: 1.1rem 1.25rem; border: 1.5px solid var(--line); border-radius: var(--radius); background: #fff; color: var(--ink); font: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+  .pl-path .ic { width: 1.8rem; height: 1.8rem; color: var(--blue); flex: none; margin-top: .1rem; }
+  .pl-path b { display: block; font-size: 1.08rem; }
+  .pl-path small { display: block; margin-top: .25rem; color: var(--muted); font-size: .92rem; line-height: 1.55; }
+  .pl-path[aria-checked='true'] { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(10,37,62,.08); }
+  .pl-path:hover { border-color: var(--blue); }
+  .pl[data-path='new'] [data-only='upload'], .pl[data-path='upload'] [data-only='new'] { display: none !important; }
+
+  .pl-grid { display: grid; grid-template-columns: minmax(0, 25rem) minmax(0, 1fr); gap: clamp(1.25rem, 3vw, 2.25rem); align-items: start; }
+  .pl-panel { display: grid; gap: 1rem; }
+  .pl-sec { border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem 1.15rem 1.2rem; background: #fff; min-width: 0; }
+  .pl-sec legend { display: flex; align-items: center; gap: .55rem; font-weight: 700; font-size: 1.05rem; padding-inline: .35rem; }
+  .pl-sec h3 { font-size: .98rem; margin: 1.1rem 0 .6rem; }
+  .pl-h3 { display: flex; align-items: center; gap: .55rem; font-size: 1.05rem; margin-bottom: .8rem; }
+  .pl-mt { margin-top: 1.2rem; }
+  .pl-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+  .pl-row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-top: .7rem; }
+  .pl-f { display: grid; gap: .3rem; font-weight: 600; font-size: .9rem; align-content: start; min-width: 0; }
+  .pl-f > span:first-child { color: var(--ink); }
+  .pl-f input, .pl-f select, .pl-f textarea { font: 500 1rem/1.35 var(--font); color: var(--ink); border: 1.5px solid var(--line); border-radius: 11px; padding: .6rem .75rem; background: #fff; width: 100%; min-width: 0; }
+  .pl-f :is(input, select, textarea):focus-visible { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,125,180,.16); }
+  .pl-inline { margin-top: .75rem; max-width: 14rem; }
+  .pl-unit { position: relative; display: block; }
+  .pl-unit i { position: absolute; right: .75rem; top: 50%; transform: translateY(-50%); font-style: normal; color: var(--muted); font-size: .85rem; pointer-events: none; }
+  .pl-f .pl-unit input { padding-right: 2.4rem; padding-left: .75rem; }
+  .pl-step { display: grid; grid-template-columns: 2.4rem 1fr 2.4rem; border: 1.5px solid var(--line); border-radius: 11px; overflow: hidden; }
+  .pl-step input { border: 0 !important; border-radius: 0 !important; text-align: center; padding-inline: .2rem !important; -moz-appearance: textfield; }
+  .pl-step input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .pl-step button { border: 0; background: var(--paper); color: var(--navy); font: 700 1.15rem/1 var(--font); cursor: pointer; }
+  .pl-step button:hover { background: var(--blue-soft); }
+  .pl-area { margin: .7rem 0 .8rem; color: var(--muted); font-size: .92rem; }
+  .pl-area b { color: var(--navy); }
+  .pl-more { margin-top: .8rem; }
+  .pl-more summary { cursor: pointer; font-weight: 600; font-size: .92rem; color: var(--blue); }
+  .pl-small { color: var(--muted); font-size: .84rem; line-height: 1.6; margin-top: .45rem; }
+  .pl-types { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .pl-type { position: relative; cursor: pointer; }
+  .pl-type input { position: absolute; opacity: 0; }
+  .pl-type span { display: block; height: 100%; padding: .65rem .75rem; border: 1.5px solid var(--line); border-radius: 12px; }
+  .pl-type b { display: block; font-size: .95rem; }
+  .pl-type small { display: block; color: var(--muted); font-size: .78rem; line-height: 1.45; margin-top: .15rem; }
+  .pl-type input:checked + span { border-color: var(--navy); background: var(--navy); color: #fff; }
+  .pl-type input:checked + span small { color: var(--muted-on-navy); }
+  .pl-type input:focus-visible + span { box-shadow: 0 0 0 3px rgba(0,125,180,.25); }
+  .pl-checks { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .8rem; }
+  .pl-check, .pl-chip { position: relative; cursor: pointer; }
+  .pl-check input, .pl-chip input { position: absolute; opacity: 0; }
+  .pl-check span, .pl-chip span { display: inline-flex; align-items: center; gap: .35rem; padding: .42rem .75rem; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: .88rem; font-weight: 500; }
+  .pl-check span::before, .pl-chip span::before { content: ''; width: .8rem; height: .8rem; border-radius: 4px; border: 1.5px solid #B9C6D2; flex: none; }
+  .pl-chip input[type=radio] + span::before { border-radius: 50%; }
+  .pl-check input:checked + span, .pl-chip input:checked + span { border-color: var(--navy); background: var(--blue-soft); color: var(--navy); }
+  .pl-check input:checked + span::before, .pl-chip input:checked + span::before { background: var(--navy) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2 5 8.6l4.6-5' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center/100% no-repeat; border-color: var(--navy); }
+  .pl-check input:focus-visible + span, .pl-chip input:focus-visible + span { box-shadow: 0 0 0 3px rgba(0,125,180,.25); }
+  .pl-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-block: .5rem .8rem; }
+  .pl-chips-s { margin: 0; }
+  .pl-sub[hidden], [data-hide-ist][hidden], [data-hide-mixed][hidden] { display: none !important; }
+  .pl-wide { width: 100%; }
+
+  .pl-stage { position: sticky; top: 5.5rem; display: grid; gap: .8rem; min-width: 0; }
+  .pl-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; }
+  .pl-tabs { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .pl-tabs button { padding: .45rem .85rem; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: 600 .9rem var(--font); color: var(--ink); cursor: pointer; }
+  .pl-tabs button[aria-selected='true'] { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .pl-tools { display: flex; align-items: center; gap: .5rem; }
+  .pl-icon { width: 2.3rem; height: 2.3rem; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--navy); cursor: pointer; }
+  .pl-icon svg { width: 1.15rem; height: 1.15rem; }
+  :root[dir='rtl'] .pl-icon svg, [dir='rtl'] .pl-icon svg { transform: scaleX(-1); }
+  .pl-icon[disabled] { opacity: .4; cursor: default; }
+  .pl-link { border: 0; background: none; color: var(--blue); font: 600 .9rem var(--font); cursor: pointer; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+  .pl-canvas { position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; overflow: hidden; min-height: 18rem; display: grid; place-items: center; touch-action: none; }
+  .pl-canvas svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 15rem); user-select: none; -webkit-user-select: none; }
+  .pl-canvas-wrap { position: relative; }
+  .pl-empty { color: var(--muted); padding: 2rem; text-align: center; }
+  .pl-room { cursor: pointer; transition: filter .12s; }
+  .pl-room:hover { filter: brightness(.95); }
+  .pl-sel { stroke: var(--amber); stroke-width: .12; filter: brightness(.97); }
+  .pl-swp { stroke: var(--blue); stroke-width: .12; stroke-dasharray: .25 .15; }
+  .pl-div { cursor: grab; }
+  .pl-div-x { cursor: ew-resize; }
+  .pl-div-y { cursor: ns-resize; }
+  .pl-div:hover, .pl-div.is-drag { stroke: rgba(245,168,0,.55); }
+  .pl-hint { display: flex; gap: .45rem; align-items: flex-start; color: var(--muted); font-size: .86rem; }
+  .pl-hint .ic { width: 1rem; height: 1rem; flex: none; margin-top: .2rem; color: var(--blue); }
+  .pl-warn { padding: .7rem .9rem; border-radius: 12px; background: #FFF6E0; color: #7A5200; font-size: .9rem; font-weight: 500; }
+  .pl-roompanel { position: absolute; inset-inline: .75rem; bottom: .75rem; z-index: 2; border: 1.5px solid var(--amber); border-radius: var(--radius); padding: .8rem 1rem .9rem; background: rgba(255,255,255,.97); box-shadow: 0 24px 48px -24px rgba(6,26,45,.45); }
+  .pl-roompanel.is-top { bottom: auto; top: .75rem; }
+  .pl-room-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: .6rem; }
+  .pl-x { border: 0; background: none; font-size: 1.5rem; line-height: 1; color: var(--muted); cursor: pointer; }
+  .pl-room-btns { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .7rem; }
+  .pl-room-btns .btn { padding: .5rem .85rem; font-size: .88rem; }
+  .pl-danger { color: #9B1C1C; }
+  .pl-swapnote { margin-top: .6rem; padding: .5rem .75rem; border-radius: 10px; background: var(--blue-soft); color: var(--navy); font-weight: 600; font-size: .9rem; }
+  .pl-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: .5rem; }
+  .pl-stats div { padding: .5rem .7rem; border-radius: 12px; background: var(--paper); }
+  .pl-stats dt { color: var(--muted); font-size: .8rem; }
+  .pl-stats dd { margin: 0; font-weight: 700; color: var(--navy); font-size: 1rem; text-align: start; }
+  .pl-exports { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+  .pl-exports > span { color: var(--muted); font-size: .88rem; font-weight: 600; margin-inline-end: .25rem; }
+  .pl-exports .btn { padding: .55rem .9rem; font-size: .9rem; }
+  .pl-note { margin-top: 0; }
+
+  .pl-upgrid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1rem, 3vw, 2rem); align-items: start; }
+  .pl-drop { position: relative; display: grid; justify-items: center; gap: .45rem; text-align: center; padding: 1.6rem 1rem; border: 2px dashed #B9C6D2; border-radius: var(--radius); cursor: pointer; background: var(--paper); transition: border-color .15s; font-weight: 500; }
+  .pl-drop:hover, .pl-drop.is-over { border-color: var(--blue); }
+  .pl-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .pl-drop .ic { width: 2rem; height: 2rem; color: var(--blue); }
+  .pl-drop small { color: var(--muted); font-size: .85rem; }
+  .pl-drop-s { padding: .9rem; }
+  .pl-files { list-style: none; display: grid; gap: .5rem; margin-top: .6rem; }
+  .pl-files li { display: flex; align-items: center; gap: .65rem; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; font-size: .88rem; }
+  .pl-files img { width: 3.2rem; height: 3.2rem; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); flex: none; }
+  .pl-files .pl-fn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: start; }
+  .pl-files button { border: 0; background: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+  .pl-studio-hint { display: flex; gap: .4rem; align-items: center; }
+  .pl-studio-hint .ic { width: 1rem; height: 1rem; color: var(--blue); }
+  .pl-studio-hint a { color: var(--blue); font-weight: 600; }
+
+  .pl-order-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: clamp(1.5rem, 4vw, 3rem); align-items: start; }
+  .pl-order h2 { font-size: var(--s3); }
+  .pl-sub-t { color: var(--muted); margin-top: .6rem; }
+  .pl-attached { display: flex; gap: .45rem; align-items: flex-start; margin-top: 1rem; color: #0B5E42; background: #E9F7F1; padding: .6rem .8rem; border-radius: 12px; font-weight: 600; font-size: .92rem; }
+  .pl-attached .ic { width: 1.1rem; height: 1.1rem; flex: none; margin-top: .15rem; }
+  .pl[data-path='upload'] ~ .pl-order .pl-attached { display: none; }
+  .pl-form { display: grid; gap: .9rem; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: clamp(1.1rem, 3vw, 2rem); box-shadow: 0 30px 60px -40px rgba(6,26,45,.35); }
+  .pl-form a { color: var(--blue); }
+  .pl-hp { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); pointer-events: none; }
+  .pl-msg { padding: .85rem 1rem; border-radius: 12px; font-weight: 500; }
+  .pl-msg.is-ok { background: #E9F7F1; color: #0B5E42; }
+  .pl-msg.is-err { background: #FDECEC; color: #9B1C1C; }
+  .pl-msg a { color: inherit; font-weight: 700; }
+
+  .pl-print { display: none; }
+  @media print {
+    body > *:not(.pl-print) { display: none !important; }
+    .pl-print { display: block !important; color: #0A253E; font-family: var(--font); }
+    .pl-print h1 { font-size: 18pt; margin: 0 0 4mm; }
+    .pl-print table { border-collapse: collapse; margin-bottom: 6mm; font-size: 10pt; }
+    .pl-print th, .pl-print td { border: 1px solid #ccd5de; padding: 2mm 3mm; text-align: start; vertical-align: top; }
+    .pl-print section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 6mm; }
+    .pl-print section + section { break-before: page; page-break-before: always; }
+    .pl-print h2 { font-size: 14pt; margin: 0 0 3mm; }
+    .pl-print svg { width: 100%; max-height: 240mm; }
+    .pl-print p { font-size: 9pt; color: #556779; }
+  }
+
+  @media (max-width: 960px) {
+    .pl-grid, .pl-order-grid, .pl-upgrid { grid-template-columns: 1fr; }
+    .pl-stage { position: static; }
+    .pl-roompanel { position: static; margin-top: .6rem; }
+  }
+  @media (max-width: 560px) {
+    .pl-paths, .pl-types { grid-template-columns: 1fr; }
+    .pl-order .pl-row2, .pl-upgrid .pl-row2, .pl-roompanel .pl-row2 { grid-template-columns: 1fr; }
+    .pl-row3 { grid-template-columns: repeat(3, 1fr); }
+  }
+</style>
