@@ -150,3 +150,22 @@ The studio's render button runs a real path tracer in the visitor's browser
 - **Style lock**: the first AI image of each style is kept for the visit (sessionStorage, 768 px) and sent as `ref`
   with later renders. n8n `Has style reference?` routes those to `Render with OpenAI (style ref)`, which sends both
   images (`image[]`) so furniture, fabrics and colours match across views.
+
+### Paid studio renders, engineer upsell, report numbers (live in n8n)
+- **Shared wallet**: the studio uses the redesign wallet (`localStorage` key `oxira-design-wallet`, `?w=` restores it)
+  and the same packs (`REDESIGN_PACKS`: 10 / 30 / 100 images for 29 / 69 / 179 SAR incl. VAT, Moyasar).
+  After 3 free AI images a day, `Check render request` sets `mode: paid`; the workflow then runs
+  `Paid render?` → `Get wallet (studio)` → `Has credit (studio)?` → `Spend credit (studio)` → `Use paid render`, and a failed
+  paid render goes through `Refund paid render?` → `Give credit back (studio)`. Manual test runs can pass `forcePaid: true`.
+  Payment opens in a new tab so the model in the studio is kept; the balance refreshes when the tab regains focus.
+  These nodes were added to the live workflow with update operations; the SDK file here holds the request-check code
+  but not every new node, so treat n8n as the source of truth for that branch.
+- **Engineer upsell**: under every AI image, “Order an engineer’s render in 48 hours” opens the order form on the Quick
+  package, attaches the AI image and tags the order summary with `"from":"ai-render"`.
+- **Renders log** (`oxira_design_renders`) now has `source` (`studio-traced` / `studio-snapshot`) and `mode` (free / paid).
+- **Sunday report** (Growth workflow) adds: studio AI images (paid share), room redesign images, failures, packs sold and
+  revenue (week / all), and orders from the engineer button.
+
+### Home page: “Our top services” (`src/components/TopServices.astro`, copy in `src/i18n/services.ts`)
+Featured photoreal render card (images in `public/img/services/`, real output of the studio pipeline) and eight service
+cards; prices come from `PRICES` and the listing price constant.

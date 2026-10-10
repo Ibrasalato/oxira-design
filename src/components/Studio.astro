@@ -3,6 +3,7 @@
 import { t, N8N, CONTACT, type Lang } from '../i18n/content';
 import { st } from '../i18n/studio';
 import { renderText } from '../i18n/render';
+import { rd, REDESIGN_PACKS } from '../i18n/redesign';
 import { asset, link } from '../lib/routes';
 import Icon from './Icon.astro';
 import OrderForm from './OrderForm.astro';
@@ -11,6 +12,7 @@ interface Props { lang: Lang }
 const { lang } = Astro.props;
 const s = st[lang];
 const rt = renderText[lang];
+const rb = rd[lang].buy;
 const c = t[lang];
 const cfg = {
   lang,
@@ -20,6 +22,8 @@ const cfg = {
   tour: link(lang, '/tour/'),
   planner: link(lang, '/plan/'),
   upscaleModel: asset('models/esrgan-medium-x3/model.json'),
+  wallet: N8N.redesignWallet,
+  buy: N8N.redesignBuy,
   samples: { apartment: asset('samples/apartment-3br.dxf'), studio: asset('samples/studio-ar.dxf') },
   whatsapp: CONTACT.whatsapp,
 };
@@ -235,6 +239,7 @@ const cfg = {
   <div class="sd-pt-stage" id="sd-pt-stage"></div>
   <div class="sd-pt-bar"><i id="sd-pt-fill"></i></div>
   <p class="sd-small sd-pt-msg" id="sd-pt-msg">{rt.prep}</p>
+  <div class="sd-upsell" id="sd-pt-upsell" hidden><span>{rt.upsellT}</span><button type="button" class="btn btn-amber" data-sd-order data-package="quick" data-upsell>{rt.upsellBtn}</button></div>
   <div class="sd-dlg-foot">
     <button type="button" class="btn btn-ghost" id="sd-pt-stop">{rt.stop}</button>
     <button type="button" class="btn btn-ghost" id="sd-pt-again" hidden>{rt.again}</button>
@@ -247,9 +252,30 @@ const cfg = {
 <dialog class="sd-dlg sd-dlg-img" id="sd-render-dlg">
   <div class="sd-dlg-head"><h2>{s.render.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
   <div class="sd-render-out" id="sd-render-out"></div>
+  <div class="sd-upsell" id="sd-render-upsell" hidden><span>{rt.upsellT}</span><button type="button" class="btn btn-amber" data-sd-order data-package="quick" data-upsell>{rt.upsellBtn}</button></div>
   <div class="sd-dlg-foot">
     <a class="btn btn-navy" id="sd-render-dl" download="oxira-design-render.jpg" hidden>{s.render.download}</a>
     <button type="button" class="btn btn-amber" data-sd-order>{s.order.cta}</button>
+  </div>
+</dialog>
+
+<dialog class="sd-dlg sd-buy-dlg" id="sd-buy-dlg">
+  <div class="sd-dlg-head"><h2>{rt.buyTitle}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
+  <div class="sd-buy">
+    <p class="sd-buy-need" id="sd-buy-need">{rt.needCredits}</p>
+    <div class="sd-packs">
+      {REDESIGN_PACKS.map((p) => (
+        <button type="button" class={'sd-pack' + ('best' in p && p.best ? ' is-best' : '')} data-sd-pack={p.id}>
+          {'best' in p && p.best && <em>{rb.best}</em>}
+          <b>{rb.renders(p.renders)}</b>
+          <span class="sd-pack-price">{p.price} {rb.sar}</span>
+          <small>{rb.per((p.price / p.renders).toFixed(2))} · {rb.vat}</small>
+        </button>
+      ))}
+    </div>
+    <label class="sd-buy-mail"><span>{rb.email}</span><input type="email" id="sd-buy-email" dir="ltr" autocomplete="email" maxlength="160" /></label>
+    <p class="sd-small">{rt.buyNote}</p>
+    <p class="sd-small sd-buy-msg" id="sd-buy-msg" role="status" aria-live="polite" hidden></p>
   </div>
 </dialog>
 
@@ -375,6 +401,23 @@ const cfg = {
   .sd-render-out { padding: 1rem 1.25rem; min-height: 200px; display: grid; place-items: center; text-align: center; color: var(--muted); }
   .sd-render-out img { width: 100%; border-radius: 14px; }
   .sd-pt-dlg { width: min(1100px, calc(100vw - 24px)); }
+  .sd-upsell { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; margin: 0 1.25rem .8rem; padding: .7rem .9rem; border-radius: 14px; background: #FFF6E0; border: 1px solid #F5D58A; font-size: .92rem; color: #0A253E; }
+  .sd-upsell .btn { padding: .5rem .9rem; }
+  .sd-buy { padding: 0 1.25rem 1.25rem; }
+  .sd-buy-need { margin: 0 0 .9rem; font-weight: 600; color: #0A253E; }
+  .sd-packs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+  .sd-pack { position: relative; display: grid; gap: .25rem; text-align: center; padding: 1rem .6rem .8rem; border-radius: 16px; border: 1.5px solid #DCE3EA; background: #fff; cursor: pointer; font: inherit; color: #0A253E; }
+  .sd-pack:hover, .sd-pack:focus-visible { border-color: #007DB4; }
+  .sd-pack.is-best { border-color: #F5A800; box-shadow: 0 10px 24px -16px rgba(245,168,0,.9); }
+  .sd-pack em { position: absolute; inset-block-start: -.6rem; inset-inline: 0; margin: auto; width: max-content; padding: .1rem .55rem; border-radius: 999px; background: #F5A800; color: #0A253E; font-style: normal; font-size: .75rem; font-weight: 700; }
+  .sd-pack b { font-size: 1.05rem; }
+  .sd-pack-price { font-size: 1.35rem; font-weight: 800; color: #007DB4; }
+  .sd-pack small { color: #556779; font-size: .76rem; }
+  .sd-pack[disabled] { opacity: .6; cursor: wait; }
+  .sd-buy-mail { display: grid; gap: .3rem; margin: .9rem 0 .4rem; font-size: .88rem; }
+  .sd-buy-mail input { font: inherit; padding: .55rem .7rem; border-radius: 10px; border: 1px solid #DCE3EA; }
+  .sd-buy-msg { color: #0A253E; }
+  @media (max-width: 560px) { .sd-packs { grid-template-columns: 1fr; } }
   .sd-pt-q { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .9rem; margin: 0 0 .6rem; }
   .sd-pt-q select { font: inherit; padding: .35rem .6rem; border-radius: 10px; border: 1px solid var(--line, #DCE3EA); background: #fff; }
   #sd-render.sd-link { display: block; margin: .5rem auto 0; }

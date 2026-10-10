@@ -1,0 +1,124 @@
+---
+// "Our top services": the photoreal render as the featured card (real output of the studio pipeline),
+// then eight services in a 4 × 2 grid. Prices come from PRICES so they stay in sync with the packages.
+import { t, PRICES, type Lang } from '../i18n/content';
+import { servicesText } from '../i18n/services';
+import { link, asset } from '../lib/routes';
+import Icon from './Icon.astro';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const x = servicesText[lang];
+const c = t[lang];
+const cur = c.packages.currency;
+const fmt = (n: number) => new Intl.NumberFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : lang, { maximumFractionDigits: 0 }).format(n);
+const LISTING_PRICE = 49; // keep in sync with the listing workflow and studio copy
+const studio = link(lang, '/studio/');
+const cards = [
+  { k: 'plan', icon: 'pencil', href: link(lang, '/plan/'), tag: x.free },
+  { k: 'plans', icon: 'building', href: link(lang, '/plans/'), tag: x.free },
+  { k: 'redesign', icon: 'sofa', href: link(lang, '/redesign/'), tag: x.firstFree },
+  { k: 'engineer', icon: 'cube', href: '#order', pkg: 'quick', tag: `${fmt(PRICES.quick)} ${cur}`, hot: true },
+  { k: 'interiorDesign', icon: 'people', href: '#order', pkg: 'design', tag: `${x.from} ${fmt(PRICES.designPerM2)} ${cur} ${x.perM2}` },
+  { k: 'listing', icon: 'megaphone', href: studio, tag: `${fmt(LISTING_PRICE)} ${cur}` },
+  { k: 'quotes', icon: 'ruler', href: studio, tag: x.free },
+  { k: 'designers', icon: 'user', href: link(lang, '/designers/'), tag: '' },
+] as const;
+---
+<section class="section ts" id="services" aria-labelledby="ts-title">
+  <div class="wrap">
+    <div class="sh">
+      <p class="label">{x.label}</p>
+      <h2 id="ts-title">{x.title}</h2>
+      <p class="ts-lead">{x.lead}</p>
+    </div>
+
+    <article class="ts-hero">
+      <div class="ts-hero-copy">
+        <span class="ts-tag ts-tag-new"><Icon name="spark" />{x.isNew}</span>
+        <h3>{x.render.t}</h3>
+        <p>{x.render.d}</p>
+        <a class="btn btn-amber" href={studio}><Icon name="spark" />{x.render.cta}</a>
+      </div>
+      <div class="ts-hero-vis">
+        <figure class="ts-after">
+          <img src={asset('img/services/render-after.webp')} width="900" height="600" loading="lazy" decoding="async" alt={x.after} />
+          <figcaption>{x.after}</figcaption>
+        </figure>
+        <figure class="ts-before">
+          <img src={asset('img/services/render-before.webp')} width="900" height="600" loading="lazy" decoding="async" alt={x.before} />
+          <figcaption>{x.before}</figcaption>
+        </figure>
+        <figure class="ts-inside">
+          <img src={asset('img/services/render-interior.webp')} width="900" height="600" loading="lazy" decoding="async" alt={x.interior} />
+          <figcaption>{x.interior}</figcaption>
+        </figure>
+      </div>
+    </article>
+
+    <ul class="ts-grid">
+      {cards.map((card) => {
+        const copy = x[card.k];
+        return (
+          <li class={'hot' in card && card.hot ? 'is-hot' : ''}>
+            <a href={card.href} data-package={'pkg' in card ? card.pkg : undefined}>
+              <span class="ts-ic"><Icon name={card.icon} /></span>
+              {card.tag && <span class="ts-tag">{card.tag}</span>}
+              <h3>{copy.t}</h3>
+              <p>{copy.d}</p>
+              <span class="ts-cta">{copy.cta} <span aria-hidden="true" class="ts-arrow">→</span></span>
+            </a>
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .ts { background: linear-gradient(180deg, #fff 0%, var(--paper) 100%); }
+  .ts-lead { margin-top: .8rem; color: var(--muted); max-width: 46rem; font-size: 1.05rem; }
+  .ts-tag { display: inline-flex; align-items: center; gap: .35rem; width: max-content; padding: .22rem .65rem; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: .8rem; font-weight: 700; }
+  .ts-tag :global(.ic) { width: 15px; height: 15px; }
+  .ts-tag-new { background: var(--amber); color: var(--navy); }
+
+  .ts-hero { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: clamp(1.5rem, 4vw, 3rem); align-items: center; margin-top: 2rem; padding: clamp(1.4rem, 3vw, 2.4rem); border-radius: var(--radius-lg); background: var(--navy); color: #fff; overflow: hidden; }
+  .ts-hero h3 { font-size: clamp(1.5rem, 2.6vw, 2.1rem); margin: .9rem 0 .6rem; text-wrap: balance; }
+  .ts-hero p { color: var(--muted-on-navy); font-size: 1.02rem; margin-bottom: 1.4rem; }
+  .ts-hero .btn :global(.ic) { width: 20px; height: 20px; }
+  .ts-hero-vis { position: relative; aspect-ratio: 3 / 2.15; }
+  .ts-hero-vis figure { position: absolute; margin: 0; border-radius: 16px; overflow: hidden; box-shadow: 0 24px 50px -24px rgba(0,0,0,.65); background: #0d2c49; }
+  .ts-hero-vis img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .ts-hero-vis figcaption { position: absolute; inset-inline-start: 10px; bottom: 10px; padding: .25rem .6rem; border-radius: 999px; background: rgba(10,37,62,.82); color: #fff; font-size: .76rem; font-weight: 600; }
+  .ts-after { inset: 0 0 auto 12%; width: 88%; aspect-ratio: 3 / 2; }
+  .ts-after figcaption { top: 10px; bottom: auto; inset-inline-start: auto; inset-inline-end: 10px; }
+  .ts-before { inset-inline-start: 0; bottom: 0; width: 38%; aspect-ratio: 3 / 2; border: 3px solid #fff; }
+  .ts-inside { inset-inline-end: 4%; bottom: 0; width: 38%; aspect-ratio: 3 / 2; border: 3px solid #fff; }
+
+  .ts-grid { list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-top: 1.25rem; padding: 0; }
+  .ts-grid li { min-width: 0; }
+  .ts-grid a { display: flex; flex-direction: column; gap: .55rem; height: 100%; padding: 1.35rem; border-radius: var(--radius); background: #fff; border: 1px solid var(--line); color: var(--ink); text-decoration: none; transition: border-color .15s, transform .15s, box-shadow .15s; }
+  .ts-grid a:hover { border-color: var(--navy); transform: translateY(-2px); box-shadow: 0 18px 36px -26px rgba(6,26,45,.5); }
+  .ts-grid .is-hot a { border: 2px solid var(--amber); }
+  .ts-ic { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--blue-soft); color: var(--blue); }
+  .ts-ic :global(.ic) { width: 24px; height: 24px; }
+  .is-hot .ts-ic { background: #FFF1CC; color: #B37800; }
+  .ts-grid h3 { font-size: 1.08rem; margin: .1rem 0 0; }
+  .ts-grid p { color: var(--muted); font-size: .94rem; flex: 1; }
+  .ts-cta { font-weight: 700; color: var(--blue); font-size: .95rem; }
+  :global([dir='rtl']) .ts-arrow { display: inline-block; transform: scaleX(-1); }
+
+  @media (max-width: 1000px) {
+    .ts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 860px) {
+    .ts-hero { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 520px) {
+    .ts-grid { grid-template-columns: 1fr; }
+    .ts-hero-vis { aspect-ratio: 3 / 2.3; }
+    .ts-hero-vis figcaption { font-size: .64rem; line-height: 1.25; padding: .18rem .45rem; inset-inline-start: 6px; bottom: 6px; max-width: calc(100% - 12px); border-radius: 8px; }
+    .ts-after figcaption { top: 6px; bottom: auto; inset-inline-start: auto; inset-inline-end: 6px; }
+    .ts-before, .ts-inside { width: 44%; }
+  }
+</style>

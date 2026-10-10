@@ -11,7 +11,7 @@ import { renderText } from '../../i18n/render';
 import type { Lang } from '../../i18n/content';
 import { detectRegion, areaIn, lenIn } from '../../lib/region';
 
-type Cfg = { lang: Lang; upscaleModel: string; render: string; finishing: string; listing: string; tour: string; planner: string; samples: Record<string, string>; whatsapp: string };
+type Cfg = { lang: Lang; upscaleModel: string; wallet: string; buy: string; render: string; finishing: string; listing: string; tour: string; planner: string; samples: Record<string, string>; whatsapp: string };
 
 export function startStudio(root: HTMLElement) {
   const cfg: Cfg = JSON.parse(root.dataset.cfg!);
@@ -214,10 +214,12 @@ export function startStudio(root: HTMLElement) {
     exposeAttach();
   }
 
+  let fromUpsell = false; // order opened from the button under an AI image (counted in the weekly report)
   function summaryJson() {
-    if (!plan) return JSON.stringify({ file: dwgBlob?.name || fileName });
+    if (!plan) return JSON.stringify({ from: fromUpsell ? 'ai-render' : undefined, file: dwgBlob?.name || fileName });
     const b = computeBoq(plan);
     return JSON.stringify({
+      from: fromUpsell ? 'ai-render' : undefined, // first, so a long summary cut at 20k chars keeps it
       file: fileName, style, height: plan.height, totalArea: +b.total.area.toFixed(2),
       rooms: plan.rooms.map((r) => ({ name: r.name, type: r.type, area: +r.area.toFixed(2), doors: r.doors, windows: r.windows })),
       quantities: Object.fromEntries(Object.entries(b.total).map(([k, v]) => [k, +v.toFixed(2)])),
@@ -236,6 +238,7 @@ export function startStudio(root: HTMLElement) {
         files.push({ field: 'preview', name: 'preview.jpg', blob: shot });
         try { const glb = await viewer.exportGLB(); if (glb.size < 6 * 1048576) files.push({ field: 'model', name: 'model.glb', blob: glb }); } catch {}
       }
+      if (fromUpsell && lastAi) { try { files.push({ field: 'preview', name: 'ai-render.jpg', blob: await (await fetch(lastAi)).blob() }); } catch {} }
       return { files, summary: summaryJson() };
     };
     document.querySelectorAll('form.of').forEach((f) => f.dispatchEvent(new Event('ox-sync')));
@@ -258,12 +261,84 @@ export function startStudio(root: HTMLElement) {
   try { sid = localStorage.getItem(SID_KEY) || ''; } catch {}
   if (!sid) { sid = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9]/gi, ''); try { localStorage.setItem(SID_KEY, sid); } catch {} }
   let remaining: number | null = null;
-  const renderQuota = () => { $('sd-render-left').textContent = remaining === null ? '' : `${T.render.left}: ${remaining}`; };
+  // Wallet shared with the room-redesign page (same key, same packs): paid AI images after the free ones.
+  const WALLET_KEY = 'oxira-design-wallet';
+  const lsGet = (k: string) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } };
+  const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
+  const qs = new URLSearchParams(location.search);
+  if (/^[a-zA-Z0-9]{16,48}$/.test(qs.get('w') || '')) lsSet(WALLET_KEY, qs.get('w')!);
+  let wallet = lsGet(WALLET_KEY);
+  let credits = 0;
+  const renderQuota = () => {
+    const parts: string[] = [];
+    if (remaining !== null) parts.push(`${T.render.left}: ${remaining}`);
+    if (credits > 0) parts.push(renderText[cfg.lang].credits(credits));
+    $('sd-render-left').textContent = parts.join(' · ');
+  };
+  async function refreshWallet() {
+    if (!wallet) return;
+    try {
+      const r = await (await fetch(cfg.wallet, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ wallet, sessionId: sid }) })).json();
+      const before = credits;
+      credits = Number(r.credits || 0);
+      renderQuota();
+      if (credits > before && ($('sd-buy-dlg') as HTMLDialogElement).open) {
+        ($('sd-buy-dlg') as HTMLDialogElement).close();
+        const msg = renderText[cfg.lang].bought;
+        $('sd-render-left').textContent = msg + ' · ' + renderText[cfg.lang].credits(credits);
+      }
+    } catch { /* offline: keep the last balance */ }
+  }
+  refreshWallet();
+  // payment opens in a new tab so the model here is kept; refresh the balance when the visitor comes back
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshWallet(); });
+  if (qs.has('bought') || qs.has('w') || qs.has('cancel')) {
+    if (qs.has('bought')) setTimeout(refreshWallet, 2500);
+    history.replaceState(null, '', location.pathname + location.hash);
+  }
+  const openBuy = () => {
+    const d = $('sd-buy-dlg') as HTMLDialogElement;
+    $('sd-buy-msg').hidden = true;
+    const mail = $('sd-buy-email') as HTMLInputElement;
+    if (!mail.value) mail.value = lsGet('oxira-design-email');
+    if (!d.open) d.showModal();
+  };
+  document.querySelectorAll<HTMLButtonElement>('[data-sd-pack]').forEach((btn) => btn.addEventListener('click', async () => {
+    const pack = btn.dataset.sdPack || '';
+    if (!wallet) { wallet = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^a-z0-9]/gi, '').slice(0, 24); lsSet(WALLET_KEY, wallet); }
+    const email = ($('sd-buy-email') as HTMLInputElement).value.trim();
+    if (email) lsSet('oxira-design-email', email);
+    const msg = $('sd-buy-msg');
+    // open the tab first (inside the click) so pop-up blockers allow it, then point it at the payment page
+    const tab = window.open('', '_blank');
+    btn.disabled = true;
+    try {
+      const r = await (await fetch(cfg.buy, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ wallet, pack, email, lang: cfg.lang, returnUrl: location.origin + location.pathname }) })).json();
+      if (r.success && r.payUrl) {
+        if (tab) { tab.location.href = r.payUrl; msg.textContent = renderText[cfg.lang].payTab; msg.hidden = false; }
+        else location.href = r.payUrl;
+      } else {
+        tab?.close();
+        const rb = (await import('../../i18n/redesign')).rd[cfg.lang].buy;
+        const text = encodeURIComponent(`${pack} — Oxira Design (${wallet})`);
+        msg.innerHTML = `${rb.unavailable} <a href="${cfg.whatsapp}?text=${text}" target="_blank" rel="noopener">WhatsApp</a>`;
+        msg.hidden = false;
+      }
+    } catch {
+      tab?.close();
+      msg.textContent = T.render.fail; msg.hidden = false;
+    }
+    btn.disabled = false;
+  }));
+
 
   // Same view + style already rendered in this visit: show it again instead of spending another render.
   const renderCache = new Map<string, string>();
   const hash = (t: string) => { let h = 2166136261; for (let i = 0; i < t.length; i += 7) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return (h >>> 0).toString(36) + t.length; };
+  let lastAi = '';
   const showRender = (src: string) => {
+    lastAi = src;
+    $('sd-render-upsell').hidden = false;
     const out = $('sd-render-out');
     const dl = $('sd-render-dl') as HTMLAnchorElement;
     out.innerHTML = '';
@@ -301,11 +376,13 @@ export function startStudio(root: HTMLElement) {
     const res = await fetch(cfg.render, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' }, // simple request, no CORS preflight
-      body: JSON.stringify({ sessionId: sid, image, style, view: viewer!.view, room: room ? room.type : 'room', lang: cfg.lang, source, ref: styleRefs.get(style) || undefined }),
+      body: JSON.stringify({ sessionId: sid, image, style, view: viewer!.view, room: room ? room.type : 'room', lang: cfg.lang, source, ref: styleRefs.get(style) || undefined, wallet: wallet || undefined }),
     });
     const j = await res.json();
-    if (typeof j.remaining === 'number') { remaining = j.remaining; renderQuota(); }
-    if (j.reason === 'limit') return 'limit';
+    if (typeof j.remaining === 'number') remaining = j.remaining;
+    if (typeof j.credits === 'number') credits = j.credits;
+    renderQuota();
+    if (j.reason === 'limit' || j.reason === 'credits') { openBuy(); return 'limit'; }
     if (!j.success || !j.image) throw new Error(j.reason || 'failed');
     const out = String(j.image).startsWith('data:') || String(j.image).startsWith('http') ? j.image : `data:image/jpeg;base64,${j.image}`;
     rememberStyle(out);
@@ -327,6 +404,7 @@ export function startStudio(root: HTMLElement) {
     const src = which === 'ai' ? ptAi : ptImage;
     if (!src) return;
     ptWhich = which;
+    $('sd-pt-upsell').hidden = which !== 'ai';
     const img = new Image(); img.alt = RT.title; img.src = src;
     ptStage.replaceChildren(img);
     $('sd-pt-tabs').querySelectorAll<HTMLButtonElement>('[data-pt-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ptTab === which)));
@@ -347,6 +425,7 @@ export function startStudio(root: HTMLElement) {
     if (!mod.supported()) { ptDlg.close(); aiRender(); return; }
     ptJob?.stop();
     ptImage = ''; ptAi = '';
+    $('sd-pt-upsell').hidden = true;
     $('sd-pt-tabs').hidden = true;
     ptFill.style.width = '0%';
     ptMsg.textContent = RT.prep;
@@ -420,6 +499,7 @@ export function startStudio(root: HTMLElement) {
       const r = await requestAi(c.toDataURL('image/jpeg', 0.9), 'traced');
       if (r === 'limit') { ptMsg.textContent = T.render.limit; return; }
       ptAi = r;
+      lastAi = r;
       $('sd-pt-tabs').hidden = false;
       ptMsg.textContent = RT.aiNote;
       ptShow('ai');
@@ -437,6 +517,7 @@ export function startStudio(root: HTMLElement) {
     const out = $('sd-render-out');
     const dl = $('sd-render-dl') as HTMLAnchorElement;
     dl.hidden = true;
+    $('sd-render-upsell').hidden = true;
     out.innerHTML = `<div><div class="sd-busy" style="position:static;background:none"><i></i><span>${T.render.working}</span></div></div>`;
     dlg.showModal();
     try {
@@ -561,6 +642,7 @@ export function startStudio(root: HTMLElement) {
     const el = e.target as HTMLElement;
     if (el.closest('[data-sd-order]') || el.closest('#hd-order')) {
       e.preventDefault();
+      fromUpsell = !!el.closest('[data-upsell]');
       ($('sd-render-dlg') as HTMLDialogElement).close();
       ptDlg.close();
       exposeAttach();
