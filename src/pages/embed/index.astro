@@ -1,0 +1,87 @@
+---
+// /embed/?s=<share>&l=<lang>: a shared plan for other websites (iframe). Floors as tabs, always
+// branded "Made with Oxira Design" with a link back to an editable copy. Not indexed.
+import '@fontsource/ibm-plex-sans/latin-400.css';
+import '@fontsource/ibm-plex-sans/latin-700.css';
+import '@fontsource/tajawal/arabic-400.css';
+import '@fontsource/tajawal/arabic-700.css';
+import { languages, isRtl } from '../../i18n/content';
+import { pl } from '../../i18n/planner';
+import { growth } from '../../i18n/growth';
+import { link, asset } from '../../lib/routes';
+const copy = Object.fromEntries(languages.map(({ code }) => [code, {
+  rtl: isRtl(code), kinds: pl[code].kinds, m2: pl[code].m2, street: pl[code].street, floor: pl[code].editor.floor,
+  open: growth[code].embed.open, made: growth[code].embed.madeWith, gone: growth[code].embed.notFound, plan: link(code, '/plan/'),
+}]));
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Oxira Design</title>
+  <link rel="icon" href={asset('favicon.svg')} type="image/svg+xml" />
+  <style is:global>
+    :root { --navy: #0A253E; --blue: #007DB4; --line: #E3E8EE; --muted: #556779; --font: 'IBM Plex Sans', Tajawal, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #fff; color: var(--navy); font-family: var(--font); }
+    body { display: flex; flex-direction: column; }
+    .bar { position: relative; z-index: 1; background: #fff; display: flex; gap: .35rem; padding: .5rem; border-bottom: 1px solid var(--line); overflow-x: auto; }
+    .bar button { font: 600 .85rem var(--font); border: 1.5px solid var(--line); background: #fff; color: var(--muted); border-radius: 99px; padding: .3rem .8rem; cursor: pointer; white-space: nowrap; }
+    .bar button[aria-pressed='true'] { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .view { flex: 1; min-height: 0; position: relative; overflow: hidden; background: #F7F9FA; }
+    .view svg { position: absolute; inset: .5rem; width: calc(100% - 1rem); height: calc(100% - 1rem); }
+    .view .msg { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; }
+    .foot { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .5rem .75rem; border-top: 1px solid var(--line); font-size: .85rem; }
+    .foot a { color: var(--navy); text-decoration: none; font-weight: 700; }
+    .foot .open { background: #F5A800; padding: .4rem .8rem; border-radius: 8px; }
+    .foot .brand span { color: #fff; background: var(--blue); padding: .1rem .35rem; margin-inline-start: .25rem; font-size: .75rem; }
+    .msg { color: var(--muted); padding: 2rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <nav class="bar" id="bar"></nav>
+  <main class="view" id="view"><p class="msg">…</p></main>
+  <footer class="foot">
+    <a class="brand" id="brand" href="https://design.oxira.sa/" target="_blank" rel="noopener">Oxira<span>Design</span></a>
+    <a class="open" id="open" target="_blank" rel="noopener"></a>
+  </footer>
+  <script define:vars={{ copy }}>window.__oxEmbed = copy;</script>
+  <script>
+    import { sharedPlan } from '../../lib/account';
+    import { projectFromSaved } from '../../lib/savedPlan';
+    import { floorSvg } from '../../scripts/planner/render';
+    import type { Floor, Kind } from '../../scripts/planner/model';
+    const q = new URLSearchParams(location.search);
+    const all = (window as unknown as { __oxEmbed: Record<string, any> }).__oxEmbed;
+    const lang = all[q.get('l') || ''] ? q.get('l')! : 'en';
+    const C = all[lang];
+    document.documentElement.lang = lang;
+    document.documentElement.dir = C.rtl ? 'rtl' : 'ltr';
+    const s = q.get('s') || '';
+    const view = document.getElementById('view')!;
+    const bar = document.getElementById('bar')!;
+    const open = document.getElementById('open') as HTMLAnchorElement;
+    document.getElementById('brand')!.title = C.made;
+    open.textContent = C.open;
+    open.href = `https://design.oxira.sa${C.plan}?s=${encodeURIComponent(s)}`;
+    const nf = new Intl.NumberFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : lang, { maximumFractionDigits: 2 });
+    const label = (f: Floor) => f.key === 'ground' ? C.floor.ground : f.key === 'roof' ? C.floor.roof : f.key === 'typical' ? C.floor.typical.replace('{n}', String(f.repeat)) : C.floor.upper.replace('{n}', String(f.level));
+    const fail = () => { view.innerHTML = '<p class="msg"></p>'; view.querySelector('p')!.textContent = C.gone; };
+    if (!/^[a-z0-9]{16}$/.test(s)) fail();
+    else sharedPlan(s).then((r) => {
+      const p = r.success ? projectFromSaved(r.data) : null;
+      if (!p || !p.floors.length) return fail();
+      document.title = `${r.title || 'Plan'} · Oxira Design`;
+      const show = (i: number) => {
+        view.innerHTML = floorSvg(p, p.floors[i], { names: (k: Kind) => C.kinds[k], fmt: (n: number, d = 1) => nf.format(+n.toFixed(d)), m2: C.m2, street: C.street, rtl: C.rtl, edit: false }).svg;
+        bar.querySelectorAll('button').forEach((b, j) => b.setAttribute('aria-pressed', String(j === i)));
+      };
+      p.floors.forEach((f, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label(f); b.onclick = () => show(i); bar.appendChild(b); });
+      bar.hidden = p.floors.length < 2;
+      show(0);
+    }).catch(fail);
+  </script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 ---
+import ProWaitlist from './ProWaitlist.astro';
 import { plans } from '../i18n/plans';
 import { t, PRICES, type Lang } from '../i18n/content';
 import { st } from '../i18n/studio';
@@ -164,6 +165,8 @@ const plansCopy = plans;
     </div>
   </div>
 </section>
+
+<section class="section-tight"><div class="wrap"><ProWaitlist lang={lang} /></div></section>
 
 <section class="section bg-paper" id="faq">
   <div class="wrap faq">

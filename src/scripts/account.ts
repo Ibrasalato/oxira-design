@@ -1,16 +1,17 @@
 // /account/ page controller. Everything the visitor sees comes from one "load" call to the
 // n8n account webhook; each change (save, comment, claim…) is another call, then a reload.
 import { acc as copy, STATUS_KEYS } from '../i18n/account';
+import { embedCode } from '../lib/embed';
 import type { Lang } from '../i18n/content';
 import { acc, requestLink, takeTokenFromUrl, setToken, deliver, type AccReply } from '../lib/account';
 
-type Cfg = { lang: Lang; plan: string; pkgs: Record<string, string> };
+type Cfg = { lang: Lang; plan: string; gallery: string; pkgs: Record<string, string>; pub: { on: string; off: string; live: string; embed: string; copied: string; hint: string } };
 type Msg = { role: string; text: string; at: string; mine: boolean };
 type Order = {
   id: number; package: string; status: string; created: string; price_note: string; area: number; city: string; files: string; delivered_at: string;
   rating: number; review: string; has_designer: boolean; share: string; comments: Msg[]; notes?: string; client?: string; designer?: string; planTypes?: string[];
 };
-type View = AccReply & { email: string; designer: string; projects: { pid: string; title: string; kind: string; updated: string; share: string }[]; orders: Order[]; open?: Order[]; mine?: Order[] };
+type View = AccReply & { email: string; designer: string; projects: { pid: string; title: string; kind: string; updated: string; share: string; public?: boolean }[]; orders: Order[]; open?: Order[]; mine?: Order[] };
 
 export function startAccount(root: HTMLElement) {
   const cfg: Cfg = JSON.parse(root.dataset.cfg!);
@@ -24,6 +25,8 @@ export function startAccount(root: HTMLElement) {
   let view: View | null = null;
   let tab = 'projects';
   try { tab = sessionStorage.getItem('ox-acc-tab') || 'projects'; } catch { /* */ }
+  const qTab = new URLSearchParams(location.search).get('tab');
+  if (qTab && ['projects', 'orders', 'designer'].includes(qTab)) tab = qTab;
 
   /** element helper: text is always set with textContent */
   function h<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, ...kids: (Node | string | null | false)[]) {
@@ -128,9 +131,14 @@ export function startAccount(root: HTMLElement) {
       share.addEventListener('click', () => copyLink(planUrl('s=' + p.share), share, T.projects.copied));
       const del = btn(T.projects.del, 'btn btn-ghost');
       del.addEventListener('click', () => { if (confirm(T.projects.confirmDel)) busy(del, async () => { await act('delete', { pid: p.pid }); }); });
+      const embed = btn(cfg.pub.embed);
+      embed.title = cfg.pub.hint;
+      embed.addEventListener('click', () => copyLink(embedCode(p.share, cfg.lang), embed, cfg.pub.copied));
+      const pub = btn(p.public ? cfg.pub.off : cfg.pub.on, p.public ? 'btn btn-ghost' : 'btn btn-amber');
+      pub.addEventListener('click', () => busy(pub, async () => { await act('publish', { pid: p.pid, public: !p.public }); }));
       box.append(h('article', { class: 'acc-item' },
-        h('div', { class: 'acc-item-h' }, h('b', {}, p.title), h('span', { class: 'acc-small' }, `${T.projects.updated}: ${date(p.updated)}`)),
-        h('div', { class: 'acc-actions' }, h('a', { class: 'btn btn-navy', href: `${cfg.plan}?p=${encodeURIComponent(p.pid)}` }, T.projects.open), share, del)));
+        h('div', { class: 'acc-item-h' }, h('b', {}, p.title), p.public ? h('a', { class: 'acc-badge', 'data-s': 'delivered', href: cfg.gallery }, cfg.pub.live) : null, h('span', { class: 'acc-small' }, `${T.projects.updated}: ${date(p.updated)}`)),
+        h('div', { class: 'acc-actions' }, h('a', { class: 'btn btn-navy', href: `${cfg.plan}?p=${encodeURIComponent(p.pid)}` }, T.projects.open), share, embed, pub, del)));
     }
   }
 

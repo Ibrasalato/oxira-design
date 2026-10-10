@@ -11,6 +11,7 @@ const projectsTable = { __rl: true, mode: 'id', value: 'X6k7SyQQoGAmf0rv', cache
 const commentsTable = { __rl: true, mode: 'id', value: 'pswJknyVNGLf7WIK', cachedResultName: 'oxira_design_comments' };
 const designersTable = { __rl: true, mode: 'id', value: 'f0btqmWoVKQTrIcx', cachedResultName: 'oxira_design_designers' };
 const ordersTable = { __rl: true, mode: 'id', value: '8aPzt7Ki9h8b4uDp', cachedResultName: 'oxira_design_orders' };
+const waitlistTable = { __rl: true, mode: 'id', value: 'I6RXiokIRkjBrDJd', cachedResultName: 'oxira_design_waitlist' };
 
 const col = (id, type = 'string') => ({ id, displayName: id, required: false, defaultMatch: false, display: true, type, canBeUsedToMatch: true });
 const cond = (expression) => ({
@@ -296,7 +297,7 @@ const view = {
   success: true,
   email: s.email,
   designer: des ? des.status : '',
-  projects: projects.sort((a, b) => String(b.updated).localeCompare(String(a.updated))).map((p) => ({ pid: p.pid, title: p.title, kind: p.kind, updated: p.updated, share: p.share_id })),
+  projects: projects.sort((a, b) => String(b.updated).localeCompare(String(a.updated))).map((p) => ({ pid: p.pid, title: p.title, kind: p.kind, updated: p.updated, share: p.share_id, public: !!p.public })),
   orders: orders.sort((a, b) => b.id - a.id).map((o) => pub(o, false)),
 };
 if (isDesigner) {
@@ -317,7 +318,14 @@ if (s.action === 'project') {
   const ex = projects.find((x) => x.pid === d.pid);
   if (data.length > 400000) error = 'too_big';
   else if (!ex && projects.length >= 50) error = 'limit';
-  else op = { kind: 'save', pid: ex ? ex.pid : rnd(14), owner: s.email, title: clip(d.title, 80) || 'Plan', type: clip(d.kind, 20) || 'plan', data, share_id: ex ? ex.share_id : rnd(16), updated: DateTime.now().toISO() };
+  else op = { kind: 'save', pid: ex ? ex.pid : rnd(14), owner: s.email, title: clip(d.title, 80) || 'Plan', type: clip(d.kind, 20) || 'plan', data, share_id: ex ? ex.share_id : rnd(16), updated: DateTime.now().toISO(), lang: clip(s.lang, 5) };
+} else if (s.action === 'publish') {
+  // show a saved plan in the public gallery (the team gets an email and can unpublish it in the table)
+  const ex = projects.find((x) => x.pid === d.pid);
+  const on = !!d.public;
+  if (!ex) error = 'not_found';
+  else op = { kind: 'publish', pid: ex.pid, public: on, subject: (on ? 'مخطط جديد في المعرض: ' : 'أزيل من المعرض: ') + clip(ex.title, 80) + ' | Oxira Design',
+    html: '<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;line-height:1.8">' + esc(s.email) + (on ? ' نشر' : ' أزال') + ' المخطط <b>' + esc(clip(ex.title, 80)) + '</b> ' + (on ? 'في' : 'من') + ' المعرض العام.<br><a href="https://design.oxira.sa/plan/?s=' + ex.share_id + '">افتح المخطط</a><br>لإخفائه: غيّر public إلى false في جدول oxira_design_projects.</div>' };
 } else if (s.action === 'delete') {
   const ex = projects.find((x) => x.pid === d.pid);
   if (!ex) error = 'not_found'; else op = { kind: 'del', pid: ex.pid };
@@ -360,7 +368,7 @@ const route = switchCase({
   version: 3.2,
   config: {
     name: 'Change',
-    parameters: { rules: { values: [rule('save'), rule('del'), rule('comment'), rule('claim'), rule('rate'), rule('apply')] }, options: { fallbackOutput: 'extra', renameFallbackOutput: 'view' } }
+    parameters: { rules: { values: [rule('save'), rule('del'), rule('comment'), rule('claim'), rule('rate'), rule('apply'), rule('publish')] }, options: { fallbackOutput: 'extra', renameFallbackOutput: 'view' } }
   }
 });
 
@@ -372,7 +380,7 @@ const saveProject = node({
     parameters: {
       resource: 'row', operation: 'upsert', dataTableId: projectsTable, matchType: 'allConditions',
       filters: { conditions: [{ keyName: 'pid', condition: 'eq', keyValue: expr('{{ $json.op.pid }}') }] },
-      columns: { mappingMode: 'defineBelow', value: { pid: expr('{{ $json.op.pid }}'), owner: expr('{{ $json.op.owner }}'), title: expr('{{ $json.op.title }}'), kind: expr('{{ $json.op.type }}'), data: expr('{{ $json.op.data }}'), share_id: expr('{{ $json.op.share_id }}'), updated: expr('{{ $json.op.updated }}') }, schema: [col('pid'), col('owner'), col('title'), col('kind'), col('data'), col('share_id'), col('updated')] },
+      columns: { mappingMode: 'defineBelow', value: { pid: expr('{{ $json.op.pid }}'), owner: expr('{{ $json.op.owner }}'), title: expr('{{ $json.op.title }}'), kind: expr('{{ $json.op.type }}'), data: expr('{{ $json.op.data }}'), share_id: expr('{{ $json.op.share_id }}'), updated: expr('{{ $json.op.updated }}'), lang: expr('{{ $json.op.lang }}') }, schema: [col('pid'), col('owner'), col('title'), col('kind'), col('data'), col('share_id'), col('updated'), col('lang')] },
       options: {}
     }
   },
@@ -489,6 +497,33 @@ const tellTeamApply = node({
   output: [{ success: true }]
 });
 const replyApplied = respond('Reply applied', '{{ JSON.stringify({ success: true }) }}');
+
+const publishProject = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Publish project',
+    parameters: {
+      resource: 'row', operation: 'update', dataTableId: projectsTable, matchType: 'allConditions',
+      filters: { conditions: [{ keyName: 'pid', condition: 'eq', keyValue: expr('{{ $json.op.pid }}') }, { keyName: 'owner', condition: 'eq', keyValue: expr("{{ $('Check session').first().json.email }}") }] },
+      columns: { mappingMode: 'defineBelow', value: { public: expr('{{ $json.op.public }}') }, schema: [col('public', 'boolean')] },
+      options: {}
+    }
+  },
+  output: [{ id: 1 }]
+});
+const tellTeamPublish = node({
+  type: 'n8n-nodes-base.emailSend',
+  version: 2.1,
+  config: {
+    name: 'Tell the team (gallery)',
+    parameters: { fromEmail: 'Oxira Design <info@oxira.sa>', toEmail: 'info@oxira.sa', subject: expr("{{ $('Account').first().json.op.subject }}"), html: expr("{{ $('Account').first().json.op.html }}"), options: { appendAttribution: false } },
+    credentials: smtp,
+    onError: 'continueRegularOutput'
+  },
+  output: [{ success: true }]
+});
+const replyPublished = respond('Reply published', "{{ JSON.stringify({ success: true, public: $('Account').first().json.op.public }) }}");
 
 const replyView = respond('Reply account', "{{ JSON.stringify($('Account').first().json.view) }}");
 const replySignedOut = respond('Reply signed out', "{{ JSON.stringify({ success: false, reason: 'session' }) }}");
@@ -644,7 +679,150 @@ const getShared = node({
 
 const replyShared = respond('Reply shared plan', "{{ JSON.stringify($json.id ? { success: true, title: $json.title, data: $json.data, updated: $json.updated } : { success: false, reason: 'not_found' }) }}");
 
-const note = sticky('## Oxira Design — Accounts\n- `oxira-design-login` emails a sign-in link (tokens in **oxira_portal_tokens**, shared with the oxira.sa portal; role `design`)\n- `oxira-design-account` {k, action, data}: load, project, save, delete (plans in **oxira_design_projects**), comment (thread per order in **oxira_design_comments**, email to the other side), rate, apply (designer application), claim (designers)\n- Designers: **oxira_design_designers**, status `pending` → set `active` (or `admin`) by hand to approve\n- `oxira-design-deliver` multipart: the designer of the order sends files; the client gets them by email (bcc info@), order marked تم التسليم\n- `oxira-design-share` {s}: read-only shared plan', [loginHook, accHook], { color: 4 });
+// ================================================================ public gallery (published plans)
+const galleryHook = trigger({
+  type: 'n8n-nodes-base.webhook',
+  version: 2.1,
+  config: { name: 'Gallery', parameters: { httpMethod: 'POST', path: 'oxira-design-gallery', responseMode: 'responseNode', options: { allowedOrigins: ORIGINS } } },
+  output: [{ headers: {}, body: {} }]
+});
+const galleryRows = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Published plans',
+    parameters: { resource: 'row', operation: 'get', dataTableId: projectsTable, matchType: 'allConditions', filters: { conditions: [{ keyName: 'public', condition: 'eq', keyValue: expr('{{ true }}') }] }, returnAll: false, limit: 60, orderBy: true, orderByColumn: 'updatedAt', orderByDirection: 'DESC' },
+    alwaysOutputData: true
+  },
+  output: [{ id: 1, title: 'Villa', data: '{}', share_id: 's1', public: true, updated: '2026-10-10' }]
+});
+const galleryList = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Gallery list',
+    parameters: {
+      mode: 'runOnceForAllItems',
+      language: 'javaScript',
+      jsCode: `// Newest published plans; no owner details leave the server.
+const items = $input.all().map((i) => i.json).filter((r) => r && r.id && r.public === true && r.share_id)
+  .slice(0, 36).map((r) => ({ title: String(r.title || '').slice(0, 80), share: r.share_id, data: r.data, updated: r.updated, lang: r.lang || '' }));
+return [{ json: { success: true, items } }];`
+    }
+  },
+  output: [{ success: true, items: [] }]
+});
+const replyGallery = respond('Reply gallery', '{{ JSON.stringify($json) }}');
+
+// ================================================================ public designer directory
+const designersHook = trigger({
+  type: 'n8n-nodes-base.webhook',
+  version: 2.1,
+  config: { name: 'Designer directory', parameters: { httpMethod: 'POST', path: 'oxira-design-designers', responseMode: 'responseNode', options: { allowedOrigins: ORIGINS } } },
+  output: [{ headers: {}, body: {} }]
+});
+const activeDesigners = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Active designers',
+    parameters: { resource: 'row', operation: 'get', dataTableId: designersTable, matchType: 'allConditions', filters: { conditions: [{ keyName: 'status', condition: 'eq', keyValue: 'active' }] }, returnAll: true },
+    alwaysOutputData: true, executeOnce: true
+  },
+  output: [{ id: 1, email: 'designer@example.com', name: 'Sara', skills: 'Interior design, 3ds Max', countries: 'SA, AE', status: 'active' }]
+});
+const ratedOrders = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Rated orders',
+    parameters: { resource: 'row', operation: 'get', dataTableId: ordersTable, matchType: 'allConditions', filters: { conditions: [{ keyName: 'rating', condition: 'gt', keyValue: '0' }] }, returnAll: true },
+    alwaysOutputData: true, executeOnce: true
+  },
+  output: [{ id: 7, designer: 'designer@example.com', rating: 5, review: 'Great' }]
+});
+const directory = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Directory',
+    parameters: {
+      mode: 'runOnceForAllItems',
+      language: 'javaScript',
+      jsCode: `// Public profile: name, skills, countries, rating, delivered reviews. Never the email.
+const lc = (v) => String(v || '').trim().toLowerCase();
+const des = $('Active designers').all().map((i) => i.json).filter((d) => d && d.id && d.status === 'active');
+const orders = $('Rated orders').all().map((i) => i.json).filter((o) => o && o.id && Number(o.rating) > 0);
+const items = des.map((d) => {
+  const mine = orders.filter((o) => lc(o.designer) === lc(d.email));
+  const n = mine.length;
+  const avg = n ? Math.round((mine.reduce((s, o) => s + Number(o.rating), 0) / n) * 10) / 10 : 0;
+  return { id: d.id, name: String(d.name || '').slice(0, 60), skills: String(d.skills || '').slice(0, 300), countries: String(d.countries || '').slice(0, 120), rating: avg, reviews: n,
+    quotes: mine.filter((o) => o.review).slice(-3).map((o) => String(o.review).slice(0, 240)) };
+}).filter((d) => d.name).sort((a, b) => b.rating - a.rating || b.reviews - a.reviews);
+return [{ json: { success: true, items } }];`
+    }
+  },
+  output: [{ success: true, items: [] }]
+});
+const replyDirectory = respond('Reply directory', '{{ JSON.stringify($json) }}');
+
+// ================================================================ Pro waitlist
+const waitHook = trigger({
+  type: 'n8n-nodes-base.webhook',
+  version: 2.1,
+  config: { name: 'Pro waitlist', parameters: { httpMethod: 'POST', path: 'oxira-design-waitlist', responseMode: 'responseNode', options: { allowedOrigins: ORIGINS } } },
+  output: [{ headers: {}, body: { email: 'pro@example.com', plan: 'pro', role: 'architect', lang: 'en', country: 'AE' } }]
+});
+const waitFields = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Waitlist fields',
+    parameters: {
+      mode: 'runOnceForAllItems',
+      language: 'javaScript',
+      jsCode: `let b = $input.first().json.body;
+if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }
+b = b || {};
+const clip = (v, n) => String(v == null ? '' : v).replace(/[<>]/g, '').trim().slice(0, n);
+const email = clip(b.email, 160).toLowerCase();
+const ok = /^[^\\s@<>"'(),;:\\\\]{1,64}@[a-z0-9.-]{1,120}\\.[a-z]{2,24}$/i.test(email) && !b.company_website;
+return [{ json: { ok, email, plan: clip(b.plan, 20) || 'pro', role: clip(b.role, 40), lang: clip(b.lang, 5), country: clip(b.country, 2).toUpperCase() } }];`
+    }
+  },
+  output: [{ ok: true, email: 'pro@example.com', plan: 'pro', role: 'architect', lang: 'en', country: 'AE' }]
+});
+const waitOk = ifElse({ version: 2.2, config: { name: 'Valid email?', parameters: cond('{{ $json.ok }}') } });
+const saveWait = node({
+  type: 'n8n-nodes-base.dataTable',
+  version: 1.1,
+  config: {
+    name: 'Save waitlist',
+    parameters: {
+      resource: 'row', operation: 'upsert', dataTableId: waitlistTable, matchType: 'allConditions',
+      filters: { conditions: [{ keyName: 'email', condition: 'eq', keyValue: expr('{{ $json.email }}') }] },
+      columns: { mappingMode: 'defineBelow', value: { email: expr('{{ $json.email }}'), plan: expr('{{ $json.plan }}'), role: expr('{{ $json.role }}'), lang: expr('{{ $json.lang }}'), country: expr('{{ $json.country }}') }, schema: [col('email'), col('plan'), col('role'), col('lang'), col('country')] },
+      options: {}
+    }
+  },
+  output: [{ id: 1 }]
+});
+const tellTeamWait = node({
+  type: 'n8n-nodes-base.emailSend',
+  version: 2.1,
+  config: {
+    name: 'Tell the team (Pro)',
+    parameters: { fromEmail: 'Oxira Design <info@oxira.sa>', toEmail: 'info@oxira.sa', subject: expr("{{ 'Pro waitlist: ' + $('Waitlist fields').first().json.email }}"), html: expr("{{ 'New Pro waitlist sign-up: ' + $('Waitlist fields').first().json.email + ' · ' + $('Waitlist fields').first().json.role + ' · ' + $('Waitlist fields').first().json.country + ' · ' + $('Waitlist fields').first().json.lang }}"), options: { appendAttribution: false } },
+    credentials: smtp,
+    onError: 'continueRegularOutput'
+  },
+  output: [{ success: true }]
+});
+const replyWait = respond('Reply waitlist', '{{ JSON.stringify({ success: true }) }}');
+const replyWaitBad = respond('Reply waitlist (invalid)', "{{ JSON.stringify({ success: false, reason: 'email' }) }}");
+
+const note = sticky('## Oxira Design — Accounts\n- `oxira-design-login` emails a sign-in link (tokens in **oxira_portal_tokens**, shared with the oxira.sa portal; role `design`)\n- `oxira-design-account` {k, action, data}: load, project, save, delete (plans in **oxira_design_projects**), comment (thread per order in **oxira_design_comments**, email to the other side), rate, apply (designer application), claim (designers)\n- Designers: **oxira_design_designers**, status `pending` → set `active` (or `admin`) by hand to approve\n- `oxira-design-deliver` multipart: the designer of the order sends files; the client gets them by email (bcc info@), order marked تم التسليم\n- `oxira-design-share` {s}: read-only shared plan\n- `oxira-design-gallery`: published plans (action publish; column public)\n- `oxira-design-designers`: public designer directory (no emails)\n- `oxira-design-waitlist`: Pro waitlist (**oxira_design_waitlist**)', [loginHook, accHook], { color: 4 });
 
 export default workflow('oxira-design-accounts', 'Oxira Design — Accounts')
   .add(loginHook)
@@ -665,7 +843,8 @@ export default workflow('oxira-design-accounts', 'Oxira Design — Accounts')
       .onCase(3, claimOrder.to(tellTeamClaim).to(replyClaim))
       .onCase(4, rateOrder.to(replyRated))
       .onCase(5, applyDesigner.to(tellTeamApply).to(replyApplied))
-      .onCase(6, replyView)))
+      .onCase(6, publishProject.to(tellTeamPublish).to(replyPublished))
+      .onCase(7, replyView)))
     .onFalse(replySignedOut))
   .add(deliverHook)
   .to(deliverSession)
@@ -678,4 +857,18 @@ export default workflow('oxira-design-accounts', 'Oxira Design — Accounts')
   .add(shareHook)
   .to(getShared)
   .to(replyShared)
+  .add(galleryHook)
+  .to(galleryRows)
+  .to(galleryList)
+  .to(replyGallery)
+  .add(designersHook)
+  .to(activeDesigners)
+  .to(ratedOrders)
+  .to(directory)
+  .to(replyDirectory)
+  .add(waitHook)
+  .to(waitFields)
+  .to(waitOk
+    .onTrue(saveWait.to(tellTeamWait).to(replyWait))
+    .onFalse(replyWaitBad))
   .add(note);

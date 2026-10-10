@@ -108,3 +108,12 @@ Ten languages: ar (default, no prefix, RTL), en, de, fr, ru, es, tr, zh, hi, ur 
 ## Ready-made plan pages (/plans/)
 
 `src/lib/plans.ts` builds the catalogue at build time: plot sizes × villa / single-storey house / duplex / apartment building × bedrooms, keeping only plans the generator lays out without warnings (it tries up to 4 layout variants) and dropping room counts that give the same plan on the same plot. Each plan gets `/plans/<slug>/` in all 10 languages (`src/components/PlanPage.astro`): drawings of every floor, room schedule, facts and "Open and edit" → `/plan/?plan=<slug>&v=<variant>`, which loads the same brief and variant in the editor. Copy: `src/i18n/plans.ts` (ar, en) and `src/i18n/plans/<code>.ts`. To add sizes or types, edit `SIZES` / `BEDS` there.
+
+## Gallery, embeds, designer directory, Pro waitlist
+
+- `/gallery/`: plans users publish from their account (`publish` action → column `public` in `oxira_design_projects`; the team gets an email and can hide one by setting `public` to false). Cards are drawn in the browser; "Remix" opens an editable copy (`/plan/?s=`). Feed: `oxira-design-gallery`.
+- `/embed/?s=<share>&l=<lang>`: iframe widget for other websites, always branded and linking back. Embed code from the account page and the plan designer (`src/lib/embed.ts`).
+- "Made with Oxira Design" mark on studio PNG exports, free AI renders and the plan print (`src/lib/watermark.ts`).
+- `/designers/`: active designers with average client rating and recent reviews (`oxira-design-designers`, no emails exposed).
+- Pro waitlist block (home page and /designers/): `oxira-design-waitlist` → `oxira_design_waitlist`, email to info@.
+- Copy for all of this: `src/i18n/growth.ts`.

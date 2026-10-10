@@ -18,6 +18,7 @@ import { rd } from '../i18n/redesign';
 import { pl } from '../i18n/planner';
 import { acc } from '../i18n/account';
 import { plans } from '../i18n/plans';
+import { growth } from '../i18n/growth';
 import { legal } from '../i18n/legal';
 import { GUIDES, guideCopy, guidePath, HUB_PATH, ui, isGuideLang } from '../i18n/guides';
 const gl = isGuideLang(lang) ? lang : null;
@@ -37,6 +38,8 @@ const guideLinks = gl ? GUIDES.filter((g) => g.kind === 'service').map((g) => ({
         <li><a href={link(lang, '/studio/')}>{c.nav.studio}</a></li>
         <li><a href={link(lang, '/plan/')}>{pl[lang].nav}</a></li>
         <li><a href={link(lang, '/plans/')}>{plans[lang].nav}</a></li>
+        <li><a href={link(lang, '/gallery/')}>{growth[lang].gallery.nav}</a></li>
+        <li><a href={link(lang, '/designers/')}>{growth[lang].designers.nav}</a></li>
         <li><a href={link(lang, '/redesign/')}>{rd[lang].nav}</a></li>
         <li><a href={link(lang, '/account/')}>{acc[lang].nav}</a></li>
         <li><a href={`${home}#packages`}>{c.nav.packages}</a></li>

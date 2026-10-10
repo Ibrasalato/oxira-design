@@ -1,0 +1,78 @@
+---
+// /designers/: public directory of active designers with client ratings (n8n oxira-design-designers),
+// a call to join, and the Pro waitlist.
+import Base from '../layouts/Base.astro';
+import Icon from './Icon.astro';
+import ProWaitlist from './ProWaitlist.astro';
+import { type Lang } from '../i18n/content';
+import { growth } from '../i18n/growth';
+import { link } from '../lib/routes';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const D = growth[lang].designers;
+const home = link(lang, '/');
+const cfg = { lang, reviews: D.reviews, isNew: D.isNew, empty: D.empty, countries: D.countries };
+---
+<Base lang={lang} path="/designers/" title={D.title} description={D.meta}>
+  <section class="page-hero">
+    <div class="wrap">
+      <p class="label">{D.kicker}</p>
+      <h1>{D.h1}</h1>
+      <p class="lead">{D.lead}</p>
+      <div class="ds-cta">
+        <a class="btn btn-amber" href={`${home}#order`}><Icon name="people" />{D.hire}</a>
+        <a class="btn btn-ghost" href={`${link(lang, '/account/')}?tab=designer`}><Icon name="user" />{D.join}</a>
+      </div>
+    </div>
+  </section>
+  <section class="section-tight">
+    <div class="wrap">
+      <ul class="ds-grid" id="ds-grid" data-cfg={JSON.stringify(cfg)}></ul>
+      <p class="ds-empty" id="ds-empty" hidden>{D.empty} <a href={`${link(lang, '/account/')}?tab=designer`}>{D.join} →</a></p>
+      <div class="ds-join">
+        <div><h2>{D.join}</h2><p>{D.joinLead}</p></div>
+        <a class="btn btn-navy" href={`${link(lang, '/account/')}?tab=designer`}>{D.join}</a>
+      </div>
+    </div>
+  </section>
+  <section class="section-tight"><div class="wrap"><ProWaitlist lang={lang} /></div></section>
+</Base>
+
+<script>
+  import { designerList } from '../lib/account';
+  const grid = document.getElementById('ds-grid')!;
+  const cfg = JSON.parse(grid.dataset.cfg!);
+  designerList().then((r) => {
+    const items = (r.success && Array.isArray(r.items) ? r.items : []) as { name: string; skills: string; countries: string; rating: number; reviews: number; quotes: string[] }[];
+    document.getElementById('ds-empty')!.hidden = items.length > 0;
+    for (const d of items) {
+      const li = document.createElement('li');
+      li.innerHTML = '<div class="ds-h"><span class="ds-av"></span><div><b></b><small class="ds-stars"></small></div></div><p class="ds-skills"></p><p class="ds-c"></p><div class="ds-q"></div>';
+      li.querySelector('.ds-av')!.textContent = d.name.trim().charAt(0).toUpperCase();
+      li.querySelector('b')!.textContent = d.name;
+      li.querySelector('.ds-stars')!.textContent = d.reviews ? `★ ${d.rating.toFixed(1)} · ${cfg.reviews.replace('{n}', String(d.reviews))}` : cfg.isNew;
+      li.querySelector('.ds-skills')!.textContent = d.skills;
+      li.querySelector('.ds-c')!.textContent = d.countries ? `${cfg.countries}: ${d.countries}` : '';
+      const q = li.querySelector('.ds-q')!;
+      for (const t of d.quotes || []) { const p = document.createElement('blockquote'); p.textContent = t; q.appendChild(p); }
+      grid.appendChild(li);
+    }
+  }).catch(() => { document.getElementById('ds-empty')!.hidden = false; });
+</script>
+
+<style>
+  .ds-cta { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.5rem; }
+  .ds-grid { list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1rem; }
+  .ds-grid :global(li) { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .5rem; align-content: start; }
+  .ds-grid :global(.ds-h) { display: flex; gap: .7rem; align-items: center; }
+  .ds-grid :global(.ds-av) { width: 2.6rem; height: 2.6rem; border-radius: 50%; background: #007DB4; color: #fff; display: grid; place-items: center; font-weight: 700; flex: none; }
+  .ds-grid :global(.ds-h div) { display: grid; }
+  .ds-grid :global(.ds-stars) { color: #B07800; font-weight: 600; }
+  .ds-grid :global(.ds-skills), .ds-grid :global(.ds-c) { margin: 0; color: var(--muted); font-size: .92rem; }
+  .ds-grid :global(blockquote) { margin: 0; padding: .5rem .7rem; background: var(--paper, #F5F7F9); border-radius: 10px; font-size: .9rem; }
+  .ds-empty { color: var(--muted); padding: 1rem 0 2rem; }
+  .ds-empty a { color: var(--blue); font-weight: 700; }
+  .ds-join { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem; border: 1.5px dashed var(--line); border-radius: var(--radius); }
+  .ds-join h2 { font-size: 1.2rem; }
+  .ds-join p { color: var(--muted); margin: .3rem 0 0; }
+</style>

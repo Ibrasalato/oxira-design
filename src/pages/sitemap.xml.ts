@@ -4,7 +4,7 @@ import { planCatalog } from '../lib/plans';
 
 const site = 'https://design.oxira.sa';
 // Pages that exist in every language.
-const pages = ['', 'studio/', 'plan/', 'redesign/', 'privacy/', 'terms/', 'refunds/'];
+const pages = ['', 'studio/', 'plan/', 'redesign/', 'gallery/', 'designers/', 'privacy/', 'terms/', 'refunds/'];
 const guides = [HUB_PATH, ...GUIDES.map((g) => `/${g.slug}/`)].map((p) => p.replace(/^\//, ''));
 
 const entry = (p: string, langs: Lang[], priority: string, lastmod?: string) =>

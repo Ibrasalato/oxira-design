@@ -1,0 +1,78 @@
+---
+// /gallery/: plans users chose to publish (n8n "Oxira Design — Accounts", oxira-design-gallery).
+// Each card is drawn in the browser from the saved plan; "Remix" opens an editable copy (/plan/?s=).
+import Base from '../layouts/Base.astro';
+import Icon from './Icon.astro';
+import { isRtl, type Lang } from '../i18n/content';
+import { growth } from '../i18n/growth';
+import { pl } from '../i18n/planner';
+import { link } from '../lib/routes';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const G = growth[lang].gallery;
+const T = pl[lang];
+const cfg = { lang, rtl: isRtl(lang), plan: link(lang, '/plan/'), kinds: T.kinds, m2: T.m2, street: T.street, types: T.type.names, remix: G.remix, empty: G.empty };
+---
+<Base lang={lang} path="/gallery/" title={G.title} description={G.meta}>
+  <section class="page-hero">
+    <div class="wrap">
+      <p class="label">{G.kicker}</p>
+      <h1>{G.h1}</h1>
+      <p class="lead">{G.lead}</p>
+      <div class="gl-cta">
+        <a class="btn btn-amber" href={link(lang, '/plan/')}><Icon name="pencil" />{G.cta}</a>
+        <a class="btn btn-ghost" href={link(lang, '/account/')}><Icon name="upload" />{G.share}</a>
+      </div>
+    </div>
+  </section>
+  <section class="section-tight">
+    <div class="wrap">
+      <p class="gl-msg" id="gl-msg">{G.loading}</p>
+      <ul class="gl-grid" id="gl-grid" data-cfg={JSON.stringify(cfg)}></ul>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { galleryList } from '../lib/account';
+  import { projectFromSaved } from '../lib/savedPlan';
+  import { floorSvg } from '../scripts/planner/render';
+  import { totals, type Kind } from '../scripts/planner/model';
+  const grid = document.getElementById('gl-grid')!;
+  const msg = document.getElementById('gl-msg')!;
+  const cfg = JSON.parse(grid.dataset.cfg!);
+  const nf = new Intl.NumberFormat(cfg.lang === 'ar' ? 'ar-SA-u-nu-latn' : cfg.lang, { maximumFractionDigits: 1 });
+  galleryList().then((r) => {
+    const items = (r.success && Array.isArray(r.items) ? r.items : []) as { title: string; share: string; data: string }[];
+    msg.textContent = items.length ? '' : cfg.empty;
+    msg.hidden = !!items.length;
+    for (const it of items) {
+      const p = projectFromSaved(it.data);
+      if (!p || !p.floors.length) continue;
+      const f = p.floors[0];
+      const svg = floorSvg(p, f, { names: (k: Kind) => cfg.kinds[k], fmt: (n: number, d = 1) => nf.format(+n.toFixed(d)), m2: cfg.m2, street: cfg.street, rtl: cfg.rtl, edit: false, site: false }).svg;
+      const tt = totals(p);
+      const li = document.createElement('li');
+      li.innerHTML = `<div class="gl-thumb">${svg}</div><div class="gl-body"><b></b><small dir="auto"></small><a class="btn btn-navy"></a></div>`;
+      li.querySelector('b')!.textContent = it.title;
+      li.querySelector('small')!.textContent = `${cfg.types[p.brief.type] || ''} ${p.brief.land.w}×${p.brief.land.d} m · ${nf.format(Math.round(tt.built))} ${cfg.m2}`;
+      const a = li.querySelector('a')!;
+      a.textContent = cfg.remix;
+      a.href = `${cfg.plan}?s=${encodeURIComponent(it.share)}`;
+      grid.appendChild(li);
+    }
+  }).catch(() => { msg.textContent = cfg.empty; });
+</script>
+
+<style>
+  .gl-cta { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.5rem; }
+  .gl-msg { color: var(--muted); padding: 2rem 0; }
+  .gl-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; }
+  .gl-grid :global(li) { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: grid; }
+  .gl-grid :global(.gl-thumb) { background: #F7F9FA; padding: .6rem; aspect-ratio: 4 / 3; display: grid; place-items: center; }
+  .gl-grid :global(.gl-thumb svg) { width: 100%; height: 100%; }
+  .gl-grid :global(.gl-body) { padding: .8rem 1rem 1rem; display: grid; gap: .3rem; }
+  .gl-grid :global(.gl-body small) { color: var(--muted); }
+  .gl-grid :global(.gl-body .btn) { margin-top: .5rem; justify-self: start; padding: .5rem .9rem; font-size: .9rem; }
+</style>

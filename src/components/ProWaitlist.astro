@@ -1,0 +1,67 @@
+---
+// Oxira Design Pro: subscription for professionals. Until payments open, a waitlist (n8n oxira-design-waitlist).
+import Icon from './Icon.astro';
+import { type Lang } from '../i18n/content';
+import { growth } from '../i18n/growth';
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const P = growth[lang].pro;
+---
+<section class="pro" id="pro" data-lang={lang} data-ok={P.joined} data-bad={P.bad}>
+  <div class="pro-copy">
+    <p class="label">{P.label}</p>
+    <h2>{P.title}</h2>
+    <p>{P.lead}</p>
+    <ul>{P.features.map((f) => <li><Icon name="check" />{f}</li>)}</ul>
+  </div>
+  <form class="pro-form" id="pro-form" novalidate>
+    <p class="pro-soon">{P.soon}</p>
+    <label><span>{P.email}</span><input type="email" name="email" required autocomplete="email" dir="ltr" maxlength="160" /></label>
+    <label><span>{P.role}</span><select name="role">{P.roles.map((r) => <option value={r}>{r}</option>)}</select></label>
+    <input type="text" name="company_website" tabindex="-1" autocomplete="off" class="pro-hp" aria-hidden="true" />
+    <button type="submit" class="btn btn-amber">{P.join}</button>
+    <p class="pro-msg" role="status" aria-live="polite" hidden></p>
+  </form>
+</section>
+
+<script>
+  import { joinWaitlist } from '../lib/account';
+  import { detectRegion } from '../lib/region';
+  import type { Lang } from '../i18n/content';
+  document.querySelectorAll<HTMLElement>('.pro').forEach((root) => {
+    const form = root.querySelector('form')!;
+    const msg = root.querySelector<HTMLElement>('.pro-msg')!;
+    const lang = root.dataset.lang as Lang;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const email = String(fd.get('email') || '').trim();
+      const say = (t: string, err = false) => { msg.textContent = t; msg.hidden = false; msg.classList.toggle('is-err', err); };
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return say(root.dataset.bad!, true);
+      const b = form.querySelector('button')!;
+      b.disabled = true;
+      try {
+        const r = await joinWaitlist({ email, role: String(fd.get('role') || ''), lang, country: detectRegion(lang).id, company_website: String(fd.get('company_website') || '') });
+        if (r.success) { say(root.dataset.ok!); form.reset(); } else say(root.dataset.bad!, true);
+      } catch { say(root.dataset.bad!, true); } finally { b.disabled = false; }
+    });
+  });
+</script>
+
+<style>
+  .pro { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 2rem; padding: clamp(1.5rem, 4vw, 2.5rem); border-radius: var(--radius-lg, 22px); background: linear-gradient(135deg, #0A253E, #0B3556); color: #fff; }
+  .pro .label { color: #F5A800; }
+  .pro h2 { font-size: var(--s3, 2rem); margin: .3rem 0 .6rem; }
+  .pro-copy > p { color: var(--muted-on-navy, #A7B8C8); }
+  .pro ul { list-style: none; padding: 0; margin: 1.2rem 0 0; display: grid; gap: .55rem; }
+  .pro li { display: flex; gap: .55rem; align-items: center; }
+  .pro li :global(.ic) { color: #F5A800; }
+  .pro-form { display: grid; gap: .75rem; align-content: start; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: 1.2rem; }
+  .pro-soon { font-weight: 600; margin: 0; }
+  .pro-form label { display: grid; gap: .3rem; font-size: .88rem; color: #C9D6E2; }
+  .pro-form input, .pro-form select { font: 500 .98rem var(--font); padding: .65rem .75rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.25); background: #fff; color: #0A253E; }
+  .pro-hp { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; clip-path: inset(50%); }
+  .pro-msg { margin: 0; padding: .55rem .75rem; border-radius: 10px; background: rgba(255,255,255,.12); font-size: .92rem; }
+  .pro-msg.is-err { background: #FDECEC; color: #9B1C1C; }
+  @media (max-width: 860px) { .pro { grid-template-columns: 1fr; } }
+</style>

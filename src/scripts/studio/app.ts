@@ -1,4 +1,5 @@
 // Studio controller: file loading, layer roles, rebuilding, panels, exports, AI render and order hand-off.
+import { watermark } from '../../lib/watermark';
 import { readDxf, rescale, type Flat, type Role } from './dxf.ts';
 import { buildPlan, type Plan, type RoomType } from './plan.ts';
 import { computeBoq, boqCsv } from './boq.ts';
@@ -270,6 +271,8 @@ export function startStudio(root: HTMLElement) {
     img.src = src;
     out.appendChild(img);
     dl.href = src; dl.hidden = false;
+    // free renders carry the mark; the link is swapped once it is ready
+    watermark(src, 'image/jpeg').then((b) => { if (dl.href === src || dl.href.startsWith('data:')) dl.href = URL.createObjectURL(b); }).catch(() => {});
   };
 
   async function aiRender() {
@@ -396,7 +399,7 @@ export function startStudio(root: HTMLElement) {
     const ex = el.closest<HTMLElement>('[data-export]');
     if (ex && viewer) {
       const k = ex.dataset.export;
-      if (k === 'png') save(await (await fetch(viewer.snapshot('image/png'))).blob(), base() + '.png');
+      if (k === 'png') save(await watermark(viewer.snapshot('image/png')), base() + '.png');
       if (k === 'glb') save(await viewer.exportGLB(), base() + '.glb');
       if (k === 'obj') save(await viewer.exportOBJ(), base() + '.obj');
       if (k === 'ifc' && plan) {

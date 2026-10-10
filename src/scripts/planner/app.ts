@@ -7,6 +7,7 @@ import { isPdf, pdfToImage } from '../pdfImage';
 import { rg } from '../../i18n/region';
 import { acc as accCall, getToken, sharedPlan } from '../../lib/account';
 import { parseSlug, specBrief } from '../../lib/plans';
+import { embedCode } from '../../lib/embed';
 import { acc as accCopy } from '../../i18n/account';
 import { detectRegion, regionById, regionName, saveRegion, lenIn, lenOut, areaIn, type Region, type Units, type Programme } from '../../lib/region';
 
@@ -20,7 +21,7 @@ const PROGRAMME: Record<Programme, { villa: Partial<Brief['villa']>; bld: Partia
 };
 const LEN = ['land.w', 'land.d', 'land.streetW', 'setback.front', 'setback.back', 'setback.side'];
 
-type Cfg = { lang: Lang; ai: string; order: string; studio: string; whatsapp: string; account: string };
+type Cfg = { lang: Lang; ai: string; order: string; studio: string; whatsapp: string; account: string; embedCopied: string; embedLabel: string };
 type Cloud = { pid: string; share: string; title: string };
 type Extras = { planTypes: string[]; formats: string[]; facade: string };
 type Saved = { v: 1; brief: Brief; extras: Extras; floors: Floor[]; seq: number; edited: boolean; path: 'new' | 'upload'; variant?: number; imported?: boolean; cloud?: Cloud | null };
@@ -473,7 +474,7 @@ export function startPlanner(root: HTMLElement) {
     const rows = briefRows(T).map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('');
     box.setAttribute('dir', rtl ? 'rtl' : 'ltr');
     box.innerHTML = `<section><h1>Oxira Design — ${esc(T.type.names[b.type])}</h1><table>${rows}<tr><th>${esc(T.editor.stats.built)}</th><td dir="ltr">${A(tt.built, 0)}</td></tr></table><p>${esc(T.editor.note)}</p></section>` +
-      project.floors.map((f) => `<section><h2>${esc(floorLabel(f))}</h2>${floorSvg(project!, f, { names, fmt, m2: T.m2, len: L, area: (a) => A(a), dims: DM, street: T.street, rtl, edit: false }).svg}</section>`).join('');
+      project.floors.map((f) => `<section><h2>${esc(floorLabel(f))}</h2>${floorSvg(project!, f, { names, fmt, m2: T.m2, len: L, area: (a) => A(a), dims: DM, street: T.street, rtl, edit: false }).svg}<p class="pl-print-mark" dir="ltr">Made with Oxira Design · design.oxira.sa</p></section>`).join('');
     window.print();
   });
   const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -788,6 +789,7 @@ export function startPlanner(root: HTMLElement) {
     $('pl-save-in').hidden = signed;
     $('pl-save-form').hidden = !signed;
     $('pl-share').hidden = !cloud;
+    $('pl-embed').hidden = !cloud;
     if (cloud) {
       $<HTMLInputElement>('pl-share-url').value = shareUrl(cloud.share);
       const n = $<HTMLInputElement>('pl-save-name');
@@ -823,6 +825,12 @@ export function startPlanner(root: HTMLElement) {
     const done = () => { b.textContent = AC.save.copied; setTimeout(() => { b.textContent = AC.save.copy; }, 1800); };
     if (navigator.clipboard) navigator.clipboard.writeText(inp.value).then(done, () => { inp.select(); });
     else { inp.select(); document.execCommand('copy'); done(); }
+  });
+  $('pl-embed').addEventListener('click', () => {
+    if (!cloud) return;
+    const b = $('pl-embed');
+    const done = () => { b.textContent = cfg.embedCopied; setTimeout(() => { b.textContent = cfg.embedLabel; }, 1800); };
+    navigator.clipboard?.writeText(embedCode(cloud.share, cfg.lang)).then(done, () => prompt('', embedCode(cloud!.share, cfg.lang)));
   });
   /** ?p=<pid> opens a plan from the visitor's account, ?s=<share> a plan shared with them. */
   async function openFromLink(q: URLSearchParams) {

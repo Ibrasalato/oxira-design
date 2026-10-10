@@ -11,6 +11,7 @@ import Icon from './Icon.astro';
 import RegionPicker from './RegionPicker.astro';
 import { rg } from '../i18n/region';
 import { acc } from '../i18n/account';
+import { growth } from '../i18n/growth';
 import { plans } from '../i18n/plans';
 
 interface Props { lang: Lang }
@@ -18,7 +19,7 @@ const { lang } = Astro.props;
 const p = pl[lang];
 const d = defaultBrief();
 d.setback.front = frontSetback(d.land.streetW);
-const cfg = { lang, ai: N8N.planAi, order: import.meta.env.PUBLIC_ORDER_ENDPOINT || N8N.order, studio: link(lang, '/studio/'), whatsapp: CONTACT.whatsapp, account: link(lang, '/account/') };
+const cfg = { embedCopied: growth[lang].publish.copied, embedLabel: growth[lang].publish.embed, lang, ai: N8N.planAi, order: import.meta.env.PUBLIC_ORDER_ENDPOINT || N8N.order, studio: link(lang, '/studio/'), whatsapp: CONTACT.whatsapp, account: link(lang, '/account/') };
 const ac = acc[lang];
 const num = (name: string, label: string, value: number, min: number, max: number, step = 1, unit = '') => ({ name, label, value, min, max, step, unit });
 const landFields = [num('land.w', p.land.w, d.land.w, 6, 300, 0.5, p.land.m), num('land.d', p.land.d, d.land.d, 6, 300, 0.5, p.land.m)];
@@ -209,6 +210,7 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
             <label class="pl-f"><span>{ac.save.share}</span><input id="pl-share-url" readonly dir="ltr" onfocus="this.select()" /></label>
             <button type="button" class="btn btn-ghost" id="pl-share-copy">{ac.save.copy}</button>
           </div>
+          <button type="button" class="btn btn-ghost pl-embed" id="pl-embed" hidden title={growth[lang].publish.hint}>{growth[lang].publish.embed}</button>
           <p class="pl-ai-msg" id="pl-save-msg" role="status" aria-live="polite" hidden></p>
           <a class="pl-small" href={link(lang, '/account/')}>{ac.save.mine} →</a>
         </div>
@@ -482,6 +484,7 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
     .pl-print section { break-inside: avoid; page-break-inside: avoid; margin-bottom: 6mm; }
     .pl-print section + section { break-before: page; page-break-before: always; }
     .pl-print h2 { font-size: 14pt; margin: 0 0 3mm; }
+    .pl-print .pl-print-mark { font-size: 8pt; color: #556779; text-align: right; margin: 2mm 0 0; }
     .pl-print svg { display: block; width: 100%; height: auto; max-height: 235mm; }
     .pl-print p { font-size: 9pt; color: #556779; }
   }

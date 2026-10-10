@@ -37,6 +37,9 @@ export const N8N = {
   account: HOOK + 'oxira-design-account',
   deliver: HOOK + 'oxira-design-deliver',
   share: HOOK + 'oxira-design-share',
+  gallery: HOOK + 'oxira-design-gallery',
+  designers: HOOK + 'oxira-design-designers',
+  waitlist: HOOK + 'oxira-design-waitlist',
 };
 
 export const CONTACT = {

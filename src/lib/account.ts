@@ -40,6 +40,9 @@ export async function acc(action: string, data: object = {}, lang?: Lang): Promi
 }
 
 export const sharedPlan = (s: string) => post<AccReply>(N8N.share, { s });
+export const galleryList = () => post<AccReply>(N8N.gallery, {});
+export const designerList = () => post<AccReply>(N8N.designers, {});
+export const joinWaitlist = (b: { email: string; role: string; lang: Lang; country: string; company_website?: string }) => post<AccReply>(N8N.waitlist, { plan: 'pro', ...b });
 
 export async function deliver(orderId: number, note: string, files: File[]): Promise<AccReply> {
   const fd = new FormData();

@@ -1,0 +1,9 @@
+---
+import Designers from '../../../components/Designers.astro';
+import { languages, type Lang } from '../../../i18n/content';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar').map((l) => ({ params: { lang: l.code } }));
+}
+const lang = Astro.params.lang as Lang;
+---
+<Designers lang={lang} />

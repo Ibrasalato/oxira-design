@@ -4,6 +4,7 @@
 // Backend: n8n "Oxira Design — Accounts".
 import { t, type Lang } from '../i18n/content';
 import { acc } from '../i18n/account';
+import { growth } from '../i18n/growth';
 import { pl } from '../i18n/planner';
 import { link } from '../lib/routes';
 import Icon from './Icon.astro';
@@ -14,7 +15,7 @@ const a = acc[lang];
 const items = t[lang].packages.items as Record<string, { name: string }>;
 const pkgs: Record<string, string> = Object.fromEntries(Object.entries(items).map(([k, v]) => [k, v.name]));
 pkgs.plan = pl[lang].nav;
-const cfg = { lang, plan: link(lang, '/plan/'), pkgs };
+const cfg = { lang, plan: link(lang, '/plan/'), gallery: link(lang, '/gallery/'), pkgs, pub: growth[lang].publish };
 ---
 <section class="page-hero acc-hero">
   <div class="wrap">
