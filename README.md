@@ -117,3 +117,10 @@ Ten languages: ar (default, no prefix, RTL), en, de, fr, ru, es, tr, zh, hi, ur 
 - `/designers/`: active designers with average client rating and recent reviews (`oxira-design-designers`, no emails exposed).
 - Pro waitlist block (home page and /designers/): `oxira-design-waitlist` → `oxira_design_waitlist`, email to info@.
 - Copy for all of this: `src/i18n/growth.ts`.
+
+## Growth automations (n8n "Oxira Design — Growth", id uA2x3tFR9fJFmlrX)
+
+- Daily 10:00 Riyadh: follow-up email for plans saved 2–14 days ago by people who have not ordered (`nudged`), rating request 3–30 days after delivery (`review_asked`), new unassigned orders emailed (bcc) to active designers (`notified_designers`). Every email has an unsubscribe link (`oxira-design-optout` → `oxira_design_optout`).
+- Sunday 09:00 Riyadh: the week in numbers plus "plan of the week" captions for Instagram, Pinterest, TikTok and X written by Claude, emailed to info@.
+- Source: `n8n/oxira-design-growth.workflow.ts`.
+- Deploys ping IndexNow (Bing, Yandex, Seznam, Naver) with every URL from the sitemap; key file in `public/`. For Google, submit `https://design.oxira.sa/sitemap.xml` once in Search Console.

@@ -66,7 +66,7 @@ if (kind === 'brief') {
     '"planTypes": array of "arch","facade","structural","electrical","plumbing","hvac","exterior3d","interior","permit","landscape", "facade": "modern"|"classic"|"najdi"|"neoclassic"|"none"}. ' +
     'If the client gives only a plot area, choose a sensible width and depth for it. "reply" is one or two short sentences in the client\\'s language (page language: ' + lang + ') saying what you set and what is still open. ' +
     'Never invent personal details. Country of the client: ' + (region || 'unknown') + '.';
-  request = { model: 'claude-sonnet-5', max_tokens: 900, system, messages: [{ role: 'user', content: 'Current settings: ' + current + '\\n\\nClient: ' + text }] };
+  request = { model: 'claude-sonnet-5', max_tokens: 4000, system, messages: [{ role: 'user', content: 'Current settings: ' + current + '\\n\\nClient: ' + text }] };
 } else {
   const m = String(b.image || '').match(/^data:image\\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);
   if (!m || m[2].length > 5500000) return fail('image');
@@ -80,7 +80,7 @@ if (kind === 'brief') {
     (knownW ? 'The client says the building is ' + knownW + ' m wide; use that for scale. ' : '') +
     '"type" is one of: ' + KINDS + '. Keep "name" as written on the plan (any language), or a short name if none. ' +
     '"notes" is one short sentence in language "' + lang + '" about anything uncertain.';
-  request = { model: 'claude-sonnet-5', max_tokens: 4000, system, messages: [{ role: 'user', content: [
+  request = { model: 'claude-sonnet-5', max_tokens: 12000, system, messages: [{ role: 'user', content: [
     { type: 'image', source: { type: 'base64', media_type: 'image/' + m[1], data: m[2] } },
     { type: 'text', text: 'Read this floor plan and return the JSON.' }
   ] }] };

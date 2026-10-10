@@ -53,3 +53,25 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Tell IndexNow search engines (Bing, Yandex, Seznam, Naver…) about every page after a deploy.
+  # The key file is public/73715a4498cbb3099bf15e94f504f923.txt. Google does not use IndexNow; it reads sitemap.xml.
+  indexnow:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    continue-on-error: true
+    steps:
+      - name: Submit URLs
+        run: |
+          sleep 30
+          curl -fsSL https://design.oxira.sa/sitemap.xml | grep -o '<loc>[^<]*</loc>' | sed 's#</\?loc>##g' | sort -u > urls.txt
+          wc -l urls.txt
+          python3 - <<'PY'
+          import json, urllib.request
+          urls = [u.strip() for u in open('urls.txt') if u.strip()]
+          for i in range(0, len(urls), 9000):
+              body = json.dumps({"host": "design.oxira.sa", "key": "73715a4498cbb3099bf15e94f504f923", "keyLocation": "https://design.oxira.sa/73715a4498cbb3099bf15e94f504f923.txt", "urlList": urls[i:i + 9000]}).encode()
+              req = urllib.request.Request("https://api.indexnow.org/indexnow", data=body, headers={"Content-Type": "application/json; charset=utf-8"})
+              print(urllib.request.urlopen(req, timeout=60).status, len(urls[i:i + 9000]))
+          PY
