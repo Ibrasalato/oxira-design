@@ -6,6 +6,7 @@ import { isRtl, type Lang } from '../../i18n/content';
 import { isPdf, pdfToImage } from '../pdfImage';
 import { rg } from '../../i18n/region';
 import { acc as accCall, getToken, sharedPlan } from '../../lib/account';
+import { parseSlug, specBrief } from '../../lib/plans';
 import { acc as accCopy } from '../../i18n/account';
 import { detectRegion, regionById, regionName, saveRegion, lenIn, lenOut, areaIn, type Region, type Units, type Programme } from '../../lib/region';
 
@@ -825,6 +826,19 @@ export function startPlanner(root: HTMLElement) {
   });
   /** ?p=<pid> opens a plan from the visitor's account, ?s=<share> a plan shared with them. */
   async function openFromLink(q: URLSearchParams) {
+    // ?plan=<slug>&v=<variant>: a ready-made plan page (/plans/<slug>/)
+    const preset = parseSlug(q.get('plan') || '');
+    if (preset) {
+      history.replaceState(null, '', location.pathname + location.hash);
+      writeBrief(specBrief(preset), readExtras());
+      syncForm();
+      variant = Math.max(0, Math.min(3, Number(q.get('v')) || 0));
+      cloud = null; showCloud();
+      setPath('new', false);
+      regenerate(false);
+      if (location.hash !== '#pl-order') $('pl-canvas').scrollIntoView({ block: 'center' });
+      return;
+    }
     const pid = q.get('p'), s = q.get('s');
     if (!pid && !s) return;
     history.replaceState(null, '', location.pathname + location.hash);

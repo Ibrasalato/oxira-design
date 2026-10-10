@@ -1,4 +1,5 @@
 ---
+import { plans } from '../i18n/plans';
 import { t, PRICES, type Lang } from '../i18n/content';
 import { st } from '../i18n/studio';
 import { link, asset } from '../lib/routes';
@@ -26,6 +27,7 @@ const audienceIcons = ['user', 'building', 'megaphone', 'pencil'];
 // Service guides exist in Arabic and English only.
 const gl = isGuideLang(lang) ? lang : null;
 const pr = pl[lang].promo;
+const plansCopy = plans;
 ---
 <section class="hero">
   <div class="wrap hero-grid">
@@ -80,6 +82,7 @@ const pr = pl[lang].promo;
       <div class="plan-promo-cta">
         <a class="btn btn-amber" href={link(lang, '/plan/')}><Icon name="pencil" />{pr.ctaNew}</a>
         <a class="btn btn-ghost-light" href={`${link(lang, '/plan/')}?path=upload`}><Icon name="upload" />{pr.ctaUp}</a>
+        <a class="btn btn-ghost-light" href={link(lang, '/plans/')}><Icon name="building" />{plansCopy[lang].nav}</a>
       </div>
     </div>
   </div>

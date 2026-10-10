@@ -1,0 +1,9 @@
+---
+import PlanPage from '../../../components/PlanPage.astro';
+import { planCatalog, type PlanSpec } from '../../../lib/plans';
+export function getStaticPaths() {
+  return planCatalog().map((spec) => ({ params: { slug: spec.slug }, props: { spec } }));
+}
+const { spec } = Astro.props as { spec: PlanSpec };
+---
+<PlanPage lang="ar" spec={spec} />

@@ -11,6 +11,7 @@ import Icon from './Icon.astro';
 import RegionPicker from './RegionPicker.astro';
 import { rg } from '../i18n/region';
 import { acc } from '../i18n/account';
+import { plans } from '../i18n/plans';
 
 interface Props { lang: Lang }
 const { lang } = Astro.props;
@@ -36,6 +37,7 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
     <h1>{p.h1}</h1>
     <p class="lead">{p.lead}</p>
     <ol class="pl-steps">{p.steps.map((s, i) => <li><b>{i + 1}</b>{s}</li>)}</ol>
+    <p class="pl-browse"><a class="more" href={link(lang, '/plans/')}>{plans[lang].all} →</a></p>
   </div>
 </section>
 
@@ -314,6 +316,7 @@ const bldChecks = ['majlis', 'maid', 'roof', 'lift'] as const;
   .pl-var-row button { padding: .3rem; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; display: grid; gap: .2rem; font: 600 .78rem var(--font); color: var(--muted); }
   .pl-var-row button[aria-pressed='true'] { border-color: var(--navy); color: var(--navy); box-shadow: 0 0 0 2px rgba(10,37,62,.1); }
   .pl-var-row svg { width: 100%; height: 4.8rem; display: block; }
+  .pl-browse { margin-top: 1rem; }
   .pl-steps { list-style: none; padding: 0; margin: 1.75rem 0 0; display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; color: var(--muted); }
   .pl-steps li { display: flex; align-items: center; gap: .55rem; }
   .pl-steps b, .pl-sec legend b, .pl-h3 b { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-size: .9rem; flex: none; }

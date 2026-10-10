@@ -1,0 +1,11 @@
+---
+import PlanPage from '../../../../components/PlanPage.astro';
+import { languages, type Lang } from '../../../../i18n/content';
+import { planCatalog, type PlanSpec } from '../../../../lib/plans';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar').flatMap((l) => planCatalog().map((spec) => ({ params: { lang: l.code, slug: spec.slug }, props: { spec } })));
+}
+const lang = Astro.params.lang as Lang;
+const { spec } = Astro.props as { spec: PlanSpec };
+---
+<PlanPage lang={lang} spec={spec} />

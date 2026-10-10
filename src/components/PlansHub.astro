@@ -1,0 +1,73 @@
+---
+// /plans/: every ready-made plan, grouped by building type and plot size.
+import Base from '../layouts/Base.astro';
+import { type Lang } from '../i18n/content';
+import { plans, fill } from '../i18n/plans';
+import { link } from '../lib/routes';
+import { planCatalog, PLAN_KINDS } from '../lib/plans';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const P = plans[lang];
+const all = planCatalog();
+const groups = PLAN_KINDS.map((kind) => {
+  const items = all.filter((s) => s.kind === kind);
+  const sizes = [...new Set(items.map((s) => `${s.w}x${s.d}`))];
+  return { kind, rows: sizes.map((sz) => ({ sz, items: items.filter((s) => `${s.w}x${s.d}` === sz) })) };
+}).filter((g) => g.rows.length);
+const site = Astro.site!;
+const abs = (path: string) => new URL(link(lang, path), site).href;
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: P.home, item: abs('/') },
+    { '@type': 'ListItem', position: 2, name: P.nav, item: abs('/plans/') },
+  ] },
+  { '@context': 'https://schema.org', '@type': 'CollectionPage', name: P.hubH1, description: P.hubDesc, inLanguage: lang,
+    mainEntity: { '@type': 'ItemList', numberOfItems: all.length, itemListElement: all.slice(0, 100).map((s, i) => ({ '@type': 'ListItem', position: i + 1, url: abs(`/plans/${s.slug}/`) })) } },
+];
+---
+<Base lang={lang} path="/plans/" title={P.hubTitle} description={P.hubDesc} ld={ld}>
+  <section class="page-hero">
+    <div class="wrap">
+      <p class="label">{P.hubKicker}</p>
+      <h1>{P.hubH1}</h1>
+      <p class="lead">{P.hubLead}</p>
+      <nav class="ph-jump">{groups.map((g) => <a href={`#${g.kind}`}>{P.kinds[g.kind].plural}</a>)}</nav>
+    </div>
+  </section>
+  <section class="section-tight">
+    <div class="wrap ph">
+      {groups.map((g) => (
+        <section id={g.kind} class="ph-group">
+          <h2>{P.kinds[g.kind].plural}</h2>
+          <table>
+            <thead><tr><th>{P.plotSize}</th><th></th></tr></thead>
+            <tbody>
+              {g.rows.map((r) => (
+                <tr>
+                  <th scope="row" dir="ltr">{r.sz.replace('x', '×')} m</th>
+                  <td>{r.items.map((s) => <a href={link(lang, `/plans/${s.slug}/`)}>{fill(P.bedsN, { n: s.beds })}</a>)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ))}
+      <p class="ph-note">{P.note}</p>
+    </div>
+  </section>
+</Base>
+<style>
+  .ph-jump { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.5rem; }
+  .ph-jump a { padding: .5rem .9rem; border-radius: 99px; border: 1.5px solid var(--line); color: var(--navy); font-weight: 600; text-decoration: none; background: #fff; }
+  .ph { display: grid; gap: 2rem; }
+  .ph-group h2 { font-size: 1.4rem; margin-bottom: .75rem; }
+  .ph-group table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .ph-group th, .ph-group td { padding: .6rem .8rem; border-bottom: 1px solid var(--line); text-align: start; vertical-align: middle; }
+  .ph-group thead th { font-size: .82rem; color: var(--muted); background: var(--paper, #F5F7F9); }
+  .ph-group tbody th { white-space: nowrap; width: 8rem; }
+  .ph-group td { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .ph-group td a { padding: .35rem .7rem; border-radius: 99px; background: var(--blue-soft); color: var(--navy); font-weight: 600; font-size: .9rem; text-decoration: none; }
+  .ph-group td a:hover { background: var(--navy); color: #fff; }
+  .ph-note { color: var(--muted); font-size: .88rem; max-width: 52rem; }
+</style>

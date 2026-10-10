@@ -104,3 +104,7 @@ PDFs to the team.
 ## Languages
 
 Ten languages: ar (default, no prefix, RTL), en, de, fr, ru, es, tr, zh, hi, ur (RTL). The first five live in each file under `src/i18n/`; the other five each have one file in `src/i18n/locales/<code>.ts` holding all their copy (content, planner, studio, redesign, region, account, legal, tour) in the same shapes. To add a language: add it to `Lang` and `languages` in `content.ts`, to `astro.config.mjs`, copy a locale file and translate it, add it to `locales/index.ts` and the records, add `public/flags/<flag>.svg` and run `OG_ONLY=<code> python3 scripts/og.py` with the preview running. RTL languages: set `dir: "rtl"` in the copy and add the code to `isRtl`.
+
+## Ready-made plan pages (/plans/)
+
+`src/lib/plans.ts` builds the catalogue at build time: plot sizes × villa / single-storey house / duplex / apartment building × bedrooms, keeping only plans the generator lays out without warnings (it tries up to 4 layout variants) and dropping room counts that give the same plan on the same plot. Each plan gets `/plans/<slug>/` in all 10 languages (`src/components/PlanPage.astro`): drawings of every floor, room schedule, facts and "Open and edit" → `/plan/?plan=<slug>&v=<variant>`, which loads the same brief and variant in the editor. Copy: `src/i18n/plans.ts` (ar, en) and `src/i18n/plans/<code>.ts`. To add sizes or types, edit `SIZES` / `BEDS` there.
