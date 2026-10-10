@@ -30,11 +30,11 @@ with sync_playwright() as p:
     for lang, (d, title, sub) in TXT.items():
         if only and lang not in only: continue
         html = f'''<html dir="{d}"><head><style>
-@font-face {{ font-family: Cairo; font-weight: 700; src: url({F('cairo/files/cairo-arabic-700-normal.woff2')}); }}
+@font-face {{ font-family: Tajawal; font-weight: 700; src: url({F('tajawal/files/tajawal-arabic-700-normal.woff2')}); }}
 @font-face {{ font-family: Plex; font-weight: 700; src: url({F('ibm-plex-sans/files/ibm-plex-sans-latin-700-normal.woff2')}); }}
 @font-face {{ font-family: Plex; font-weight: 700; src: url({F('ibm-plex-sans/files/ibm-plex-sans-cyrillic-700-normal.woff2')}); unicode-range: U+0400-04FF; }}
 @font-face {{ font-family: Deva; font-weight: 700; src: url({F('noto-sans-devanagari/files/noto-sans-devanagari-devanagari-700-normal.woff2')}); }}
-body {{ margin:0; width:1200px; height:630px; background:#0A253E; font-family: Plex, Cairo, Deva, 'Noto Sans CJK SC', 'Noto Sans CJK TC', sans-serif; color:#fff; overflow:hidden; position:relative; }}
+body {{ margin:0; width:1200px; height:630px; background:#0A253E; font-family: Plex, Tajawal, Deva, 'Noto Sans CJK SC', 'Noto Sans CJK TC', sans-serif; color:#fff; overflow:hidden; position:relative; }}
 .img {{ position:absolute; top:40px; bottom:40px; inset-inline-end:40px; width:560px; border-radius:24px; background:#F3F6F8 url({model}) center/cover; }}
 .txt {{ position:absolute; inset-inline-start:64px; top:70px; width:500px; }}
 .brand {{ display:flex; align-items:center; gap:14px; font-size:34px; direction:ltr; justify-content:flex-{'end' if d=='rtl' else 'start'}; }}

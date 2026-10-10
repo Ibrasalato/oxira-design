@@ -472,7 +472,7 @@ function makeLabel(text: string): THREE.Sprite {
   const c = document.createElement('canvas');
   const fs = 44;
   const g = c.getContext('2d')!;
-  const font = (w: number) => `${w} ${fs}px "IBM Plex Sans", Cairo, system-ui, sans-serif`;
+  const font = (w: number) => `${w} ${fs}px "IBM Plex Sans", ${document.documentElement.lang === 'ur' ? 'Cairo' : 'Tajawal'}, system-ui, sans-serif`;
   g.font = font(700);
   const w = Math.ceil(Math.max(...lines.map((l, i) => { g.font = font(i ? 500 : 700); return g.measureText(l).width; }))) + 48;
   const h = lines.length * (fs + 10) + 28;

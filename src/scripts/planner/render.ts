@@ -30,7 +30,7 @@ export function floorSvg(p: Project, f: Floor, o: SvgOpts): { svg: string; geo: 
   const W = vx1 - vx0, H = vy1 - vy0;
   const X = (x: number) => f2(x - vx0), Y = (y: number) => f2(vy1 - y);
   const s: string[] = [];
-  s.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f2(W)} ${f2(H)}" class="pl-svg" font-family="Cairo, 'IBM Plex Sans', sans-serif">`);
+  s.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f2(W)} ${f2(H)}" class="pl-svg" style="font-family: var(--font, 'IBM Plex Sans', Tajawal, sans-serif)">`);
   s.push(`<defs><pattern id="pl-hatch" width="0.4" height="0.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="0.4" stroke="#B9CBA9" stroke-width="0.05"/></pattern></defs>`);
   const rect = (r: Rect, attrs: string) => `<rect x="${X(r.x0)}" y="${Y(r.y1)}" width="${f2(r.x1 - r.x0)}" height="${f2(r.y1 - r.y0)}" ${attrs}/>`;
   const line = (x0: number, y0: number, x1: number, y1: number, attrs: string) => `<line x1="${X(x0)}" y1="${Y(y0)}" x2="${X(x1)}" y2="${Y(y1)}" ${attrs}/>`;
