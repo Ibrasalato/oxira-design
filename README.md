@@ -128,7 +128,7 @@ Ten languages: ar (default, no prefix, RTL), en, de, fr, ru, es, tr, zh, hi, ur 
 ## Photoreal render (path traced, Corona-style)
 
 The studio's render button runs a real path tracer in the visitor's browser
-(`src/scripts/studio/pathtrace.ts`, loaded only when used; library `three-gpu-pathtracer`).
+(`src/scripts/studio/pathtrace.ts`, loaded only when used; library `three-gpu-pathtracer` 0.0.24, the last release that works with three 0.183, which `@google/model-viewer` (AR) requires).
 
 - Physically based light: sun + sky dome, 5 bounces outside / 8 inside (global illumination), auto exposure,
   denoise, then a camera finish (soft bloom, S-curve, vignette), in the spirit of Corona Renderer.
