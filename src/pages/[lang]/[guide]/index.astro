@@ -1,0 +1,12 @@
+---
+// Guide pages for languages without their own folder (ar is the root, en has src/pages/en/).
+import GuidePage from '../../../components/GuidePage.astro';
+import { languages, type Lang } from '../../../i18n/content';
+import { GUIDES, type GuideSlug } from '../../../i18n/guides';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar' && l.code !== 'en').flatMap((l) => GUIDES.map((g) => ({ params: { lang: l.code, guide: g.slug } })));
+}
+const lang = Astro.params.lang as Lang;
+const slug = Astro.params.guide as GuideSlug;
+---
+<GuidePage lang={lang} slug={slug} />

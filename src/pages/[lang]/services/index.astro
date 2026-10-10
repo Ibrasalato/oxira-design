@@ -1,0 +1,10 @@
+---
+// Services hub for languages without their own folder (ar is the root, en has src/pages/en/).
+import GuidesHub from '../../../components/GuidesHub.astro';
+import { languages, type Lang } from '../../../i18n/content';
+export function getStaticPaths() {
+  return languages.filter((l) => l.code !== 'ar' && l.code !== 'en').map((l) => ({ params: { lang: l.code } }));
+}
+const lang = Astro.params.lang as Lang;
+---
+<GuidesHub lang={lang} />

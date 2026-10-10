@@ -1,12 +1,20 @@
-// SEO landing pages (services, regions, hub). Only Arabic and English exist for these pages.
-// Copy lives in guides-ar.ts / guides-en.ts; this file holds structure, schema hints and UI strings.
-import type { Lang } from './content';
+// SEO landing pages (services, regions, hub) in every language.
+// Copy: guides-ar.ts, guides-en.ts and guides/<lang>.ts; this file holds structure, schema hints and UI strings.
+import { languages, type Lang } from './content';
+import * as gDe from './guides/de';
+import * as gFr from './guides/fr';
+import * as gRu from './guides/ru';
+import * as gEs from './guides/es';
+import * as gTr from './guides/tr';
+import * as gZh from './guides/zh';
+import * as gHi from './guides/hi';
+import * as gUr from './guides/ur';
 import { guidesAr } from './guides-ar';
 import { guidesEn } from './guides-en';
 
-export type GuideLang = 'ar' | 'en';
-export const GUIDE_LANGS: GuideLang[] = ['ar', 'en'];
-export const isGuideLang = (l: Lang): l is GuideLang => l === 'ar' || l === 'en';
+export type GuideLang = Lang;
+export const GUIDE_LANGS: GuideLang[] = languages.map((l) => l.code);
+export const isGuideLang = (l: Lang): l is GuideLang => GUIDE_LANGS.includes(l);
 
 /** Last content update of the guide pages (sitemap lastmod). */
 export const GUIDES_UPDATED = '2026-10-09';
@@ -63,12 +71,15 @@ export const GUIDES: GuideMeta[] = [
   { slug: 'egypt', kind: 'region', icon: 'pin', primary: 'studio', secondary: 'redesign', related: ['apartment-3d-design', 'finishing-quantities', 'ai-room-design'], serviceType: '3D apartment and villa design before finishing', areaServed: ['Egypt'] },
 ];
 
-export const guideCopy: Record<GuideLang, Record<GuideSlug, GuideCopy>> = { ar: guidesAr, en: guidesEn };
+export const guideCopy: Record<GuideLang, Record<GuideSlug, GuideCopy>> = {
+  ar: guidesAr, en: guidesEn, de: gDe.guides, fr: gFr.guides, ru: gRu.guides,
+  es: gEs.guides, tr: gTr.guides, zh: gZh.guides, hi: gHi.guides, ur: gUr.guides,
+};
 
 export const guidePath = (slug: GuideSlug) => `/${slug}/`;
 export const HUB_PATH = '/services/';
 
-export const ui = {
+const ui0 = {
   ar: {
     home: 'الرئيسية',
     hub: 'الخدمات والأدلة',
@@ -131,4 +142,10 @@ export const ui = {
     breadcrumb: 'Breadcrumb',
     homeSection: { label: 'Services & guides', title: 'Practical guides for what you need', more: 'All services and guides' },
   },
+};
+
+export type GuideUi = typeof ui0.en;
+export const ui: Record<GuideLang, GuideUi> = {
+  ...ui0,
+  de: gDe.ui, fr: gFr.ui, ru: gRu.ui, es: gEs.ui, tr: gTr.ui, zh: gZh.ui, hi: gHi.ui, ur: gUr.ui,
 };
