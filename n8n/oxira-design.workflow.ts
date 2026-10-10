@@ -9,6 +9,7 @@ const ordersTable = { __rl: true, mode: 'id', value: '8aPzt7Ki9h8b4uDp', cachedR
 const rendersTable = { __rl: true, mode: 'id', value: 'Gws7LMwCihJk9UiZ', cachedResultName: 'oxira_design_renders' };
 const smtp = { smtp: { id: 'Jd9L9EGYmDKHV0KB', name: 'SMTP account' } };
 const moyasar = { httpBasicAuth: { id: 'CjK6licQa4dDZuNM', name: 'moyasar live' } };
+const openai = { openAiApi: { id: 'u4tha4yxIAlqw6hy', name: 'OpenAI oxira' } };
 
 const SYSTEM = '=أنت "مساعد Oxira Design"، المساعد الذكي على موقع design.oxira.sa. ترد على الزوار في نافذة المحادثة.\n\n' +
 'عن Oxira Design:\n' +
@@ -691,37 +692,10 @@ const checkRender = node({
     parameters: {
       mode: 'runOnceForAllItems',
       language: 'javaScript',
-      jsCode: "// Validates the snapshot, applies the free quota (3 per visitor per day, 150 per day overall) and writes the prompt.\n" +
-        "const PER_VISITOR = 3, PER_DAY = 150;\n" +
-        "let b = $input.first().json.body;\n" +
-        "if (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }\n" +
-        "b = b || {};\n" +
-        "const sid = String(b.sessionId || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 64);\n" +
-        "const m = String(b.image || '').match(/^data:image\\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);\n" +
-        "const day = $now.setZone('Asia/Riyadh').toFormat('yyyy-MM-dd');\n" +
-        "const styles = {\n" +
-        "  modern: 'modern minimalist interior: warm white walls, light oak wood floors, grey fabric sofa, black metal details, clean lines',\n" +
-        "  classic: 'classic elegant interior: cream walls with mouldings, dark walnut wood floors, marble, burgundy upholstery, brass details',\n" +
-        "  najdi: 'contemporary Najdi Saudi interior: earthy beige plaster walls, terracotta tiles, traditional Arabic majlis floor seating with red patterned cushions, carved dark wood doors, warm lantern lighting',\n" +
-        "  scandi: 'Scandinavian interior: white walls, pale ash wood floors, light grey textiles, plants, airy and bright',\n" +
-        "  luxury: 'luxury interior: polished white marble floors, warm grey walls, dark wood, emerald velvet, gold details, designer lighting',\n" +
-        "};\n" +
-        "const views = { top: 'aerial cutaway dollhouse view looking down at the whole apartment, walls cut at mid height', orbit: 'three-quarter aerial view of the apartment with the roof removed', walk: 'eye-level interior photograph inside the room' };\n" +
-        "const style = styles[b.style] ? b.style : 'modern';\n" +
-        "const view = views[b.view] ? b.view : 'orbit';\n" +
-        "const base = { session_id: sid, style, view, lang: ['ar', 'en', 'de', 'fr', 'ru'].includes(b.lang) ? b.lang : 'ar', day };\n" +
-        "if (!sid || sid.length < 6 || !m || m[2].length > 4000000) return [{ json: Object.assign(base, { allowed: false, reason: 'invalid', remaining: 0 }) }];\n" +
-        "const st = $getWorkflowStaticData('global');\n" +
-        "if (!st.renders || st.renders.day !== day) st.renders = { day, total: 0, by: {} };\n" +
-        "const used = st.renders.by[sid] || 0;\n" +
-        "if (used >= PER_VISITOR || st.renders.total >= PER_DAY) return [{ json: Object.assign(base, { allowed: false, reason: 'limit', remaining: 0 }) }];\n" +
-        "st.renders.by[sid] = used + 1;\n" +
-        "st.renders.total += 1;\n" +
-        "const prompt = 'Turn this rough 3D model screenshot into a photorealistic architectural visualization. Keep exactly the same camera angle, floor plan, walls, doors, windows and furniture positions; do not add or remove rooms or change proportions. View: ' + views[view] + '. Style: ' + styles[style] + '. Realistic materials and textures, soft natural daylight, high-end interior design render. Remove any labels or interface elements. No text, no watermark.';\n" +
-        "return [{ json: Object.assign(base, { allowed: true, remaining: PER_VISITOR - used - 1, prompt }), binary: { image: { data: m[2], mimeType: 'image/' + m[1], fileName: 'view.' + (m[1] === 'jpeg' ? 'jpg' : m[1]), fileExtension: m[1] === 'jpeg' ? 'jpg' : m[1] } } }];"
+      jsCode: "// Validates the image, applies the free quota (3 per visitor per day, 150 per day overall) and writes the prompt.\n// source \"traced\": a path-traced render from the studio (correct light and shadows) gets a Corona-style finishing pass.\n// source \"snapshot\": a plain viewport screenshot is turned into a render.\nconst PER_VISITOR = 3, PER_DAY = 150;\nconst MODEL = 'gpt-image-2';\nlet b = $input.first().json.body;\nif (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }\nb = b || {};\nconst sid = String(b.sessionId || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 64);\nconst m = String(b.image || '').match(/^data:image\\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);\nconst day = $now.setZone('Asia/Riyadh').toFormat('yyyy-MM-dd');\nconst styles = {\n  modern: 'modern minimalist interior: warm white walls, light oak wood floors with visible grain, grey boucle fabric sofa, black metal details, linen curtains, clean lines',\n  classic: 'classic elegant interior: cream walls with mouldings, dark walnut wood floors, marble, burgundy upholstery, brass details, silk curtains',\n  najdi: 'contemporary Najdi Saudi interior: earthy beige plaster walls, terracotta tiles, traditional Arabic majlis floor seating with red patterned cushions, carved dark wood doors, warm lantern lighting',\n  scandi: 'Scandinavian interior: white walls, pale ash wood floors, light grey textiles, wool throws, potted plants, airy and bright',\n  luxury: 'luxury interior: polished white marble floors with soft reflections, warm grey walls, dark wood panels, emerald velvet, brushed gold details, designer lighting',\n};\nconst views = { top: 'aerial cutaway dollhouse view looking down at the whole home, walls cut at mid height', orbit: 'three-quarter aerial dollhouse view of the home with the roof removed', walk: 'eye-level interior photograph inside the room, two-point perspective with vertical lines kept vertical' };\nconst style = styles[b.style] ? b.style : 'modern';\nconst view = views[b.view] ? b.view : 'orbit';\nconst traced = b.source === 'traced';\nconst base = { session_id: sid, style, view, source: traced ? 'traced' : 'snapshot', model: MODEL, quality: traced ? 'high' : 'medium', lang: ['ar', 'en', 'de', 'fr', 'ru', 'es', 'tr', 'zh', 'hi', 'ur'].includes(b.lang) ? b.lang : 'ar', day };\nif (!sid || sid.length < 6 || !m || m[2].length > 4000000) return [{ json: Object.assign(base, { allowed: false, reason: 'invalid', remaining: 0 }) }];\nconst st = $getWorkflowStaticData('global');\nif (!st.renders || st.renders.day !== day) st.renders = { day, total: 0, by: {} };\nconst used = st.renders.by[sid] || 0;\nif (used >= PER_VISITOR || st.renders.total >= PER_DAY) return [{ json: Object.assign(base, { allowed: false, reason: 'limit', remaining: 0 }) }];\nst.renders.by[sid] = used + 1;\nst.renders.total += 1;\nconst corona = 'Final look: a high-end architectural visualization as produced with Corona Renderer in 3ds Max: physically accurate global illumination, soft bounced light in the shadows, warm sun patches with crisp contact shadows, gentle bloom and glare around bright windows, true-to-life PBR materials with fine surface detail (wood grain, fabric weave, subtle floor reflections), natural white balance, filmic contrast, crisp and noise-free. ';\nconst keep = 'Keep exactly the same camera position, angle and perspective, the same walls, doors, windows, room layout and furniture positions; do not add or remove rooms, openings or major furniture and do not change proportions. ';\nconst prompt = traced\n  ? 'This image is a physically based path-traced render of a 3D model of a home; its lighting, sun direction and shadows are correct. Finish it into a photorealistic render. ' + keep + 'Keep the direction of the sunlight and shadows. View: ' + views[view] + '. Style: ' + styles[style] + '. Add tasteful realistic decor consistent with the style (rugs, cushions, books, plants, art) without moving the furniture. ' + corona + 'No people, no text, no labels, no watermark.'\n  : 'Turn this rough 3D model screenshot into a photorealistic architectural render. ' + keep + 'View: ' + views[view] + '. Style: ' + styles[style] + '. ' + corona + 'Soft natural daylight. Remove any labels or interface elements. No people, no text, no watermark.';\nreturn [{ json: Object.assign(base, { allowed: true, remaining: PER_VISITOR - used - 1, prompt }), binary: { image: { data: m[2], mimeType: 'image/' + m[1], fileName: 'view.' + (m[1] === 'jpeg' ? 'jpg' : m[1]), fileExtension: m[1] === 'jpeg' ? 'jpg' : m[1] } } }];"
     }
   },
-  output: [{ session_id: 'abc123xyz', style: 'modern', view: 'orbit', lang: 'ar', day: '2026-10-08', allowed: true, remaining: 2, prompt: 'Turn this rough 3D model...' }]
+  output: [{ session_id: 'abc123xyz', style: 'modern', view: 'orbit', source: 'traced', model: 'gpt-image-2', quality: 'high', lang: 'ar', day: '2026-10-08', allowed: true, remaining: 2, prompt: 'This image is a physically based path-traced render...' }]
 });
 
 const allowRender = ifElse({
@@ -739,26 +713,36 @@ const allowRender = ifElse({
 });
 
 const aiRender = node({
-  type: '@n8n/n8n-nodes-langchain.openAi',
-  version: 2.3,
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.5,
   config: {
     name: 'Render with OpenAI',
     onError: 'continueErrorOutput',
+    // direct call: the OpenAI node only passes some options for gpt-image-1
     parameters: {
-      resource: 'image',
-      operation: 'edit',
-      modelId: { __rl: true, mode: 'list', value: 'gpt-image-1', cachedResultName: 'gpt-image-1' },
-      prompt: expr('{{ $json.prompt }}'),
-      images: { values: [{ binaryPropertyName: 'image' }] },
-      n: 1,
-      size: '1536x1024',
-      quality: 'medium',
-      outputFormat: 'jpeg',
-      outputCompression: 85,
-      options: { inputFidelity: 'high' }
-    }
+      method: 'POST',
+      url: 'https://api.openai.com/v1/images/edits',
+      authentication: 'predefinedCredentialType',
+      nodeCredentialType: 'openAiApi',
+      sendBody: true,
+      contentType: 'multipart-form-data',
+      bodyParameters: {
+        parameters: [
+          { parameterType: 'formBinaryData', name: 'image', inputDataFieldName: 'image' },
+          { name: 'model', value: expr('{{ $json.model }}') },
+          { name: 'prompt', value: expr('{{ $json.prompt }}') },
+          { name: 'size', value: '1536x1024' },
+          { name: 'quality', value: expr('{{ $json.quality }}') },
+          { name: 'output_format', value: 'jpeg' },
+          { name: 'output_compression', value: '88' },
+          { name: 'n', value: '1' }
+        ]
+      },
+      options: { timeout: 240000 }
+    },
+    credentials: openai
   },
-  output: [{ revised_prompt: '' }]
+  output: [{ data: [{ b64_json: '/9j/' }] }]
 });
 
 const renderOut = node({
@@ -769,14 +753,7 @@ const renderOut = node({
     parameters: {
       mode: 'runOnceForAllItems',
       language: 'javaScript',
-      jsCode: "// Returns the generated image as a data URL for the studio.\n" +
-        "const item = $input.first();\n" +
-        "const key = Object.keys(item.binary || {})[0];\n" +
-        "const req = $('Check render request').first().json;\n" +
-        "if (!key) return [{ json: Object.assign({}, req, { ok: false, image: '' }) }];\n" +
-        "const buf = await this.helpers.getBinaryDataBuffer(0, key);\n" +
-        "const mime = item.binary[key].mimeType || 'image/jpeg';\n" +
-        "return [{ json: Object.assign({}, req, { prompt: undefined, ok: true, image: 'data:' + mime + ';base64,' + buf.toString('base64') }) }];"
+      jsCode: "// Returns the generated image as a data URL for the studio.\nconst r = $input.first().json || {};\nconst req = $('Check render request').first().json;\nconst b64 = r.data && r.data[0] && r.data[0].b64_json;\nif (!b64) return [{ json: Object.assign({}, req, { prompt: undefined, ok: false, image: '' }) }];\nreturn [{ json: Object.assign({}, req, { prompt: undefined, ok: true, image: 'data:image/jpeg;base64,' + b64 }) }];"
     }
   },
   output: [{ session_id: 'abc123xyz', style: 'modern', view: 'orbit', lang: 'ar', day: '2026-10-08', remaining: 2, ok: true, image: 'data:image/jpeg;base64,...' }]

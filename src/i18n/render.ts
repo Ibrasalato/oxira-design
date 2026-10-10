@@ -1,0 +1,86 @@
+// Texts for the path-traced render in the studio (all site languages).
+import type { Lang } from './content';
+
+export type RenderText = {
+  btn: string; title: string; prep: string; tracing: (n: number, t: number) => string; stop: string;
+  quality: string; fast: string; high: string; ultra: string;
+  done: string; ai: string; aiNote: string; again: string; traced: string; aiTab: string; unsupported: string;
+};
+
+const ar: RenderText = {
+  btn: 'رندر واقعي (تتبّع إضاءة)', title: 'رندر واقعي',
+  prep: 'نجهّز المشهد والإضاءة…', tracing: (n, t) => `يتحسّن الرندر… ${n} من ${t} عيّنة`, stop: 'إيقاف وحفظ',
+  quality: 'الجودة', fast: 'سريع', high: 'عالي', ultra: 'فائق',
+  done: 'الرندر جاهز. الإضاءة والظلال محسوبة فيزيائياً من الشمس والسماء.',
+  ai: 'لمسة نهائية بالذكاء الاصطناعي', aiNote: 'يضيف خامات وإكسسوارات واقعية على نفس الإضاءة والزاوية، ويُحسب من رصيدك اليومي.',
+  again: 'رندر جديد', traced: 'الرندر', aiTab: 'اللمسة النهائية',
+  unsupported: 'متصفحك لا يدعم تتبّع الإضاءة، فسنستخدم الذكاء الاصطناعي مباشرة.',
+};
+
+const en: RenderText = {
+  btn: 'Photoreal render (path traced)', title: 'Photoreal render',
+  prep: 'Preparing the scene and lighting…', tracing: (n, t) => `Refining… ${n} of ${t} samples`, stop: 'Stop and keep',
+  quality: 'Quality', fast: 'Fast', high: 'High', ultra: 'Ultra',
+  done: 'Render ready. Light and shadows are computed physically from the sun and sky.',
+  ai: 'AI finishing touch', aiNote: 'Adds realistic materials and decor on the same light and camera. Uses one of today’s renders.',
+  again: 'New render', traced: 'Render', aiTab: 'Finishing touch',
+  unsupported: 'Your browser cannot path trace, so we will use the AI render directly.',
+};
+
+const de: RenderText = { ...en,
+  btn: 'Fotorealistisches Rendering (Path Tracing)', title: 'Fotorealistisches Rendering', prep: 'Szene und Licht werden vorbereitet…',
+  tracing: (n, t) => `Wird verfeinert… ${n} von ${t} Samples`, stop: 'Stoppen und behalten', quality: 'Qualität', fast: 'Schnell', high: 'Hoch', ultra: 'Ultra',
+  done: 'Rendering fertig. Licht und Schatten sind physikalisch aus Sonne und Himmel berechnet.', ai: 'KI-Feinschliff',
+  aiNote: 'Fügt realistische Materialien und Deko bei gleichem Licht und gleicher Kamera hinzu. Zählt als ein Rendering von heute.',
+  again: 'Neues Rendering', traced: 'Rendering', aiTab: 'Feinschliff', unsupported: 'Ihr Browser unterstützt kein Path Tracing, daher nutzen wir direkt das KI-Rendering.' };
+
+const fr: RenderText = { ...en,
+  btn: 'Rendu photoréaliste (path tracing)', title: 'Rendu photoréaliste', prep: 'Préparation de la scène et de la lumière…',
+  tracing: (n, t) => `Affinage… ${n} sur ${t} échantillons`, stop: 'Arrêter et garder', quality: 'Qualité', fast: 'Rapide', high: 'Haute', ultra: 'Ultra',
+  done: 'Rendu prêt. La lumière et les ombres sont calculées physiquement à partir du soleil et du ciel.', ai: 'Finition IA',
+  aiNote: 'Ajoute des matériaux et une décoration réalistes avec la même lumière et la même caméra. Compte comme un rendu du jour.',
+  again: 'Nouveau rendu', traced: 'Rendu', aiTab: 'Finition', unsupported: 'Votre navigateur ne gère pas le path tracing, nous utilisons donc directement le rendu IA.' };
+
+const ru: RenderText = { ...en,
+  btn: 'Фотореалистичный рендер (трассировка)', title: 'Фотореалистичный рендер', prep: 'Готовим сцену и освещение…',
+  tracing: (n, t) => `Уточняем… ${n} из ${t} сэмплов`, stop: 'Остановить и сохранить', quality: 'Качество', fast: 'Быстро', high: 'Высокое', ultra: 'Ультра',
+  done: 'Рендер готов. Свет и тени рассчитаны физически от солнца и неба.', ai: 'Доводка ИИ',
+  aiNote: 'Добавляет реалистичные материалы и декор при том же свете и ракурсе. Расходует один рендер за сегодня.',
+  again: 'Новый рендер', traced: 'Рендер', aiTab: 'Доводка', unsupported: 'Ваш браузер не поддерживает трассировку, поэтому сразу используем ИИ-рендер.' };
+
+const es: RenderText = { ...en,
+  btn: 'Render fotorrealista (path tracing)', title: 'Render fotorrealista', prep: 'Preparando la escena y la luz…',
+  tracing: (n, t) => `Refinando… ${n} de ${t} muestras`, stop: 'Detener y guardar', quality: 'Calidad', fast: 'Rápida', high: 'Alta', ultra: 'Ultra',
+  done: 'Render listo. La luz y las sombras se calculan físicamente a partir del sol y el cielo.', ai: 'Acabado con IA',
+  aiNote: 'Añade materiales y decoración realistas con la misma luz y cámara. Cuenta como un render de hoy.',
+  again: 'Nuevo render', traced: 'Render', aiTab: 'Acabado', unsupported: 'Tu navegador no admite path tracing, así que usaremos directamente el render con IA.' };
+
+const tr: RenderText = { ...en,
+  btn: 'Fotogerçekçi render (ışın izleme)', title: 'Fotogerçekçi render', prep: 'Sahne ve ışık hazırlanıyor…',
+  tracing: (n, t) => `İyileştiriliyor… ${n} / ${t} örnek`, stop: 'Durdur ve sakla', quality: 'Kalite', fast: 'Hızlı', high: 'Yüksek', ultra: 'Ultra',
+  done: 'Render hazır. Işık ve gölgeler güneş ve gökyüzünden fiziksel olarak hesaplandı.', ai: 'Yapay zekâ ile son dokunuş',
+  aiNote: 'Aynı ışık ve kamerayla gerçekçi malzeme ve dekor ekler. Bugünkü render hakkınızdan biri kullanılır.',
+  again: 'Yeni render', traced: 'Render', aiTab: 'Son dokunuş', unsupported: 'Tarayıcınız ışın izlemeyi desteklemiyor; doğrudan yapay zekâ render kullanılacak.' };
+
+const zh: RenderText = { ...en,
+  btn: '真实感渲染（路径追踪）', title: '真实感渲染', prep: '正在准备场景和光照…',
+  tracing: (n, t) => `正在细化… ${n} / ${t} 采样`, stop: '停止并保留', quality: '质量', fast: '快速', high: '高', ultra: '超高',
+  done: '渲染完成。光照和阴影根据太阳和天空进行物理计算。', ai: 'AI 精修',
+  aiNote: '在相同光照和视角下添加真实材质和软装。消耗今天的一次渲染额度。',
+  again: '重新渲染', traced: '渲染', aiTab: '精修', unsupported: '您的浏览器不支持路径追踪，将直接使用 AI 渲染。' };
+
+const hi: RenderText = { ...en,
+  btn: 'फ़ोटोरियल रेंडर (पाथ ट्रेसिंग)', title: 'फ़ोटोरियल रेंडर', prep: 'दृश्य और रोशनी तैयार हो रही है…',
+  tracing: (n, t) => `बेहतर हो रहा है… ${t} में से ${n} सैंपल`, stop: 'रोकें और रखें', quality: 'गुणवत्ता', fast: 'तेज़', high: 'उच्च', ultra: 'अल्ट्रा',
+  done: 'रेंडर तैयार है। रोशनी और छाया सूरज और आसमान से भौतिक रूप से गणना की गई है।', ai: 'AI फ़िनिशिंग टच',
+  aiNote: 'उसी रोशनी और कैमरे पर असली जैसी सामग्री और सजावट जोड़ता है। आज के रेंडर में से एक गिना जाता है।',
+  again: 'नया रेंडर', traced: 'रेंडर', aiTab: 'फ़िनिशिंग टच', unsupported: 'आपका ब्राउज़र पाथ ट्रेसिंग नहीं कर सकता, इसलिए सीधे AI रेंडर इस्तेमाल होगा।' };
+
+const ur: RenderText = { ...en,
+  btn: 'حقیقت نما رینڈر (پاتھ ٹریسنگ)', title: 'حقیقت نما رینڈر', prep: 'منظر اور روشنی تیار ہو رہی ہے…',
+  tracing: (n, t) => `بہتر ہو رہا ہے… ${t} میں سے ${n} نمونے`, stop: 'روکیں اور رکھیں', quality: 'معیار', fast: 'تیز', high: 'اعلیٰ', ultra: 'الٹرا',
+  done: 'رینڈر تیار ہے۔ روشنی اور سائے سورج اور آسمان سے طبیعیاتی طور پر حساب کیے گئے ہیں۔', ai: 'AI فنشنگ ٹچ',
+  aiNote: 'اسی روشنی اور کیمرے پر حقیقی مواد اور سجاوٹ شامل کرتا ہے۔ آج کے رینڈرز میں سے ایک شمار ہوتا ہے۔',
+  again: 'نیا رینڈر', traced: 'رینڈر', aiTab: 'فنشنگ ٹچ', unsupported: 'آپ کا براؤزر پاتھ ٹریسنگ نہیں کر سکتا، اس لیے براہ راست AI رینڈر استعمال ہوگا۔' };
+
+export const renderText: Record<Lang, RenderText> = { ar, en, de, fr, ru, es, tr, zh, hi, ur };

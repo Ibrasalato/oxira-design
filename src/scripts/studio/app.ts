@@ -7,6 +7,7 @@ import { planToJson } from './share.ts';
 import type { Viewer, View } from './viewer.ts';
 import type { StyleId } from './styles.ts';
 import { st } from '../../i18n/studio';
+import { renderText } from '../../i18n/render';
 import type { Lang } from '../../i18n/content';
 import { detectRegion, areaIn, lenIn } from '../../lib/region';
 
@@ -275,6 +276,114 @@ export function startStudio(root: HTMLElement) {
     watermark(src, 'image/jpeg').then((b) => { if (dl.href === src || dl.href.startsWith('data:')) dl.href = URL.createObjectURL(b); }).catch(() => {});
   };
 
+  /** Sends one image to the n8n render workflow; returns the image URL, 'limit', or throws. */
+  async function requestAi(image: string, source: 'snapshot' | 'traced'): Promise<string> {
+    const room = plan!.rooms.slice().sort((a, b) => b.area - a.area)[0];
+    const res = await fetch(cfg.render, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' }, // simple request, no CORS preflight
+      body: JSON.stringify({ sessionId: sid, image, style, view: viewer!.view, room: room ? room.type : 'room', lang: cfg.lang, source }),
+    });
+    const j = await res.json();
+    if (typeof j.remaining === 'number') { remaining = j.remaining; renderQuota(); }
+    if (j.reason === 'limit') return 'limit';
+    if (!j.success || !j.image) throw new Error(j.reason || 'failed');
+    return String(j.image).startsWith('data:') || String(j.image).startsWith('http') ? j.image : `data:image/jpeg;base64,${j.image}`;
+  }
+
+  // ------------------------------------------------------------ path-traced render
+  const RT = renderText[cfg.lang];
+  let ptJob: { stop: () => void } | null = null;
+  let ptImage = '';   // finished path-traced frame (JPEG data URL)
+  let ptAi = '';      // AI finishing touch on top of it
+  const ptDlg = $('sd-pt-dlg') as HTMLDialogElement;
+  const ptStage = $('sd-pt-stage');
+  const ptMsg = $('sd-pt-msg');
+  const ptFill = $('sd-pt-fill');
+  const ptDl = $('sd-pt-dl') as HTMLAnchorElement;
+  const ptShow = (which: 'trace' | 'ai') => {
+    const src = which === 'ai' ? ptAi : ptImage;
+    if (!src) return;
+    const img = new Image(); img.alt = RT.title; img.src = src;
+    ptStage.replaceChildren(img);
+    $('sd-pt-tabs').querySelectorAll<HTMLButtonElement>('[data-pt-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ptTab === which)));
+    ptDl.hidden = true;
+    watermark(src, 'image/jpeg').then((b) => { ptDl.href = URL.createObjectURL(b); ptDl.hidden = false; }).catch(() => { ptDl.href = src; ptDl.hidden = false; });
+  };
+  const ptButtons = (busy: boolean) => {
+    $('sd-pt-stop').hidden = !busy;
+    $('sd-pt-again').hidden = busy;
+    $('sd-pt-ai').hidden = busy || !ptImage;
+    if (busy) ptDl.hidden = true;
+  };
+
+  async function pathRender() {
+    if (!viewer || !plan) return;
+    const mod = await import('./pathtrace.ts');
+    if (!mod.supported()) { ptDlg.close(); aiRender(); return; }
+    ptJob?.stop();
+    ptImage = ''; ptAi = '';
+    $('sd-pt-tabs').hidden = true;
+    ptFill.style.width = '0%';
+    ptMsg.textContent = RT.prep;
+    ptButtons(true);
+    if (!ptDlg.open) ptDlg.showModal();
+    // interiors are lit through windows and need about twice the samples to clear the grain
+    const total = (Number(($('sd-pt-q') as HTMLSelectElement).value) || 480) * (viewer.view === 'walk' ? 2 : 1);
+    const small = Math.min(window.innerWidth, window.innerHeight) < 700;
+    const src = viewer.renderer.domElement;
+    const aspect = Math.max(0.6, Math.min(2.2, src.width / Math.max(1, src.height)));
+    const width = Number(new URLSearchParams(location.search).get('ptw')) || (small ? 1200 : 1600);
+    const height = Math.round(width / aspect);
+    ptStage.style.aspectRatio = `${width} / ${height}`;
+    try {
+      const job = mod.trace(viewer.renderRig(width, height), {
+        width, height, samples: total,
+        onProgress: (n, t) => { ptFill.style.width = `${Math.round((n / t) * 100)}%`; ptMsg.textContent = RT.tracing(n, t); },
+      });
+      ptJob = job;
+      ptStage.replaceChildren(job.canvas);
+      const out = await job.done;
+      if (ptJob !== job) return; // a newer render replaced this one
+      ptJob = null;
+      ptImage = out.toDataURL('image/jpeg', 0.92);
+      ptFill.style.width = '100%';
+      ptMsg.textContent = RT.done;
+      ptButtons(false);
+      ptShow('trace');
+    } catch (e) {
+      console.warn(e);
+      ptJob = null;
+      ptButtons(false);
+      ptMsg.textContent = T.render.fail;
+    }
+  }
+
+  async function ptFinish() {
+    if (!ptImage || !viewer || !plan) return;
+    if (ptAi) { $('sd-pt-tabs').hidden = false; ptShow('ai'); return; }
+    ($('sd-pt-ai') as HTMLButtonElement).disabled = true;
+    ptMsg.textContent = T.render.working;
+    try {
+      // the AI gets the lit frame at 1536 px wide, the size it renders at
+      const img = await new Promise<HTMLImageElement>((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = ptImage; });
+      const c = document.createElement('canvas');
+      c.width = Math.min(1536, img.width); c.height = Math.round((img.height / img.width) * c.width);
+      c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+      const r = await requestAi(c.toDataURL('image/jpeg', 0.9), 'traced');
+      if (r === 'limit') { ptMsg.textContent = T.render.limit; return; }
+      ptAi = r;
+      $('sd-pt-tabs').hidden = false;
+      ptMsg.textContent = RT.aiNote;
+      ptShow('ai');
+    } catch (e) {
+      console.warn(e);
+      ptMsg.textContent = T.render.fail;
+    } finally {
+      ($('sd-pt-ai') as HTMLButtonElement).disabled = false;
+    }
+  }
+
   async function aiRender() {
     if (!viewer || !plan) return;
     const dlg = $('sd-render-dlg') as HTMLDialogElement;
@@ -291,17 +400,8 @@ export function startStudio(root: HTMLElement) {
       const key = `${style}|${viewer.view}|${hash(image)}`;
       const cached = renderCache.get(key);
       if (cached) { showRender(cached); return; }
-      const room = plan.rooms.slice().sort((a, b) => b.area - a.area)[0];
-      const res = await fetch(cfg.render, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' }, // simple request, no CORS preflight
-        body: JSON.stringify({ sessionId: sid, image, style, view: viewer.view, room: room ? room.type : 'room', lang: cfg.lang }),
-      });
-      const j = await res.json();
-      if (typeof j.remaining === 'number') { remaining = j.remaining; renderQuota(); }
-      if (j.reason === 'limit') { out.innerHTML = `<p>${T.render.limit}</p>`; return; }
-      if (!j.success || !j.image) throw new Error(j.reason || 'failed');
-      const src = String(j.image).startsWith('data:') || String(j.image).startsWith('http') ? j.image : `data:image/jpeg;base64,${j.image}`;
+      const src = await requestAi(image, 'snapshot');
+      if (src === 'limit') { out.innerHTML = `<p>${T.render.limit}</p>`; return; }
       renderCache.set(key, src);
       showRender(src);
     } catch (e) {
@@ -415,6 +515,7 @@ export function startStudio(root: HTMLElement) {
     if (el.closest('[data-sd-order]') || el.closest('#hd-order')) {
       e.preventDefault();
       ($('sd-render-dlg') as HTMLDialogElement).close();
+      ptDlg.close();
       exposeAttach();
       ($('sd-order-dlg') as HTMLDialogElement).showModal();
     }
@@ -439,6 +540,12 @@ export function startStudio(root: HTMLElement) {
     save(new Blob([boqCsv(computeBoq(plan), head, (k) => T.types[k as RoomType] || k)], { type: 'text/csv' }), base() + '-quantities.csv');
   });
   $('sd-render').addEventListener('click', aiRender);
+  $('sd-pt').addEventListener('click', pathRender);
+  $('sd-pt-again').addEventListener('click', pathRender);
+  $('sd-pt-stop').addEventListener('click', () => ptJob?.stop());
+  $('sd-pt-ai').addEventListener('click', ptFinish);
+  $('sd-pt-tabs').addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-pt-tab]'); if (b) ptShow(b.dataset.ptTab as 'trace' | 'ai'); });
+  ptDlg.addEventListener('close', () => { ptJob?.stop(); ptJob = null; });
 
   // 3D listing tours: the plan goes to the n8n workflow "Oxira Design — Listing tours" (draft → paid → live)
   const lForm = $<HTMLFormElement>('sd-listing-form');

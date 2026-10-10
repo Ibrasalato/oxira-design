@@ -2,6 +2,7 @@
 // The DXF → 3D studio app. Logic in src/scripts/studio/app.ts.
 import { t, N8N, CONTACT, type Lang } from '../i18n/content';
 import { st } from '../i18n/studio';
+import { renderText } from '../i18n/render';
 import { asset, link } from '../lib/routes';
 import Icon from './Icon.astro';
 import OrderForm from './OrderForm.astro';
@@ -9,6 +10,7 @@ import OrderForm from './OrderForm.astro';
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const s = st[lang];
+const rt = renderText[lang];
 const c = t[lang];
 const cfg = {
   lang,
@@ -78,10 +80,18 @@ const cfg = {
         <p class="sd-small">{s.quote.sub}</p>
       </details>
 
-      <details class="sd-sec">
-        <summary>{s.render.title}</summary>
+      <details class="sd-sec" open>
+        <summary>{rt.title}</summary>
+        <label class="sd-pt-q">{rt.quality}
+          <select id="sd-pt-q">
+            <option value="160">{rt.fast}</option>
+            <option value="480" selected>{rt.high}</option>
+            <option value="1200">{rt.ultra}</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn-navy sd-wide" id="sd-pt"><Icon name="spark" />{rt.btn}</button>
+        <button type="button" class="sd-link" id="sd-render">{s.render.btn}</button>
         <p class="sd-small">{s.render.note}</p>
-        <button type="button" class="btn btn-navy sd-wide" id="sd-render"><Icon name="spark" />{s.render.btn}</button>
         <p class="sd-small" id="sd-render-left"></p>
       </details>
 
@@ -215,6 +225,23 @@ const cfg = {
   </div>
 </dialog>
 
+<dialog class="sd-dlg sd-dlg-img sd-pt-dlg" id="sd-pt-dlg">
+  <div class="sd-dlg-head"><h2>{rt.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
+  <div class="sd-pt-tabs" id="sd-pt-tabs" hidden>
+    <button type="button" data-pt-tab="trace" aria-pressed="true">{rt.traced}</button>
+    <button type="button" data-pt-tab="ai" aria-pressed="false">{rt.aiTab}</button>
+  </div>
+  <div class="sd-pt-stage" id="sd-pt-stage"></div>
+  <div class="sd-pt-bar"><i id="sd-pt-fill"></i></div>
+  <p class="sd-small sd-pt-msg" id="sd-pt-msg">{rt.prep}</p>
+  <div class="sd-dlg-foot">
+    <button type="button" class="btn btn-ghost" id="sd-pt-stop">{rt.stop}</button>
+    <button type="button" class="btn btn-ghost" id="sd-pt-again" hidden>{rt.again}</button>
+    <button type="button" class="btn btn-navy" id="sd-pt-ai" hidden title={rt.aiNote}><Icon name="spark" />{rt.ai}</button>
+    <a class="btn btn-amber" id="sd-pt-dl" download="oxira-design-render.jpg" hidden>{s.render.download}</a>
+  </div>
+</dialog>
+
 <dialog class="sd-dlg sd-dlg-img" id="sd-render-dlg">
   <div class="sd-dlg-head"><h2>{s.render.title}</h2><button type="button" class="sd-x" data-close aria-label={s.render.close}>×</button></div>
   <div class="sd-render-out" id="sd-render-out"></div>
@@ -345,6 +372,18 @@ const cfg = {
   .sd-dlg .of { border: 0; box-shadow: none; border-radius: 0; }
   .sd-render-out { padding: 1rem 1.25rem; min-height: 200px; display: grid; place-items: center; text-align: center; color: var(--muted); }
   .sd-render-out img { width: 100%; border-radius: 14px; }
+  .sd-pt-dlg { width: min(1100px, calc(100vw - 24px)); }
+  .sd-pt-q { display: flex; align-items: center; justify-content: space-between; gap: .6rem; font-size: .9rem; margin: 0 0 .6rem; }
+  .sd-pt-q select { font: inherit; padding: .35rem .6rem; border-radius: 10px; border: 1px solid var(--line, #DCE3EA); background: #fff; }
+  #sd-render.sd-link { display: block; margin: .5rem auto 0; }
+  .sd-pt-stage { margin: 0 auto; max-width: calc(100% - 2.5rem); border-radius: 14px; overflow: hidden; background: #0A253E; aspect-ratio: 16 / 10; max-height: 58dvh; display: grid; place-items: center; }
+  .sd-pt-stage canvas, .sd-pt-stage img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .sd-pt-bar { height: 4px; margin: .7rem 1.25rem 0; border-radius: 4px; background: #E6ECF1; overflow: hidden; }
+  .sd-pt-bar i { display: block; height: 100%; width: 0; background: #007DB4; transition: width .2s; }
+  .sd-pt-msg { margin: .5rem 1.25rem .8rem; min-height: 1.4em; }
+  .sd-pt-tabs { display: flex; gap: .4rem; margin: 0 1.25rem .7rem; }
+  .sd-pt-tabs button { font: inherit; font-size: .88rem; padding: .35rem .9rem; border-radius: 999px; border: 1px solid #DCE3EA; background: #fff; cursor: pointer; }
+  .sd-pt-tabs button[aria-pressed='true'] { background: #0A253E; color: #fff; border-color: #0A253E; }
   .sd-ar { height: min(60dvh, 520px); background: linear-gradient(#EEF3F7, #DCE4EB); display: grid; place-items: center; }
   .sd-ar model-viewer { width: 100%; height: 100%; --poster-color: transparent; }
   .sd-ar-foot { align-items: center; padding-top: 1rem; }

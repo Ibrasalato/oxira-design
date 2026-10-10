@@ -124,3 +124,19 @@ Ten languages: ar (default, no prefix, RTL), en, de, fr, ru, es, tr, zh, hi, ur 
 - Sunday 09:00 Riyadh: the week in numbers plus "plan of the week" captions for Instagram, Pinterest, TikTok and X written by Claude, emailed to info@.
 - Source: `n8n/oxira-design-growth.workflow.ts`.
 - Deploys ping IndexNow (Bing, Yandex, Seznam, Naver) with every URL from the sitemap; key file in `public/`. For Google, submit `https://design.oxira.sa/sitemap.xml` once in Search Console.
+
+## Photoreal render (path traced, Corona-style)
+
+The studio's render button runs a real path tracer in the visitor's browser
+(`src/scripts/studio/pathtrace.ts`, loaded only when used; library `three-gpu-pathtracer`).
+
+- Physically based light: sun + sky dome, 5 bounces outside / 8 inside (global illumination), auto exposure,
+  denoise, then a camera finish (soft bloom, S-curve, vignette), in the spirit of Corona Renderer.
+- The sun is placed about 110° off the camera heading so wall shadows fall into view.
+- Walk views use two-point perspective (level camera, shifted frame) so verticals stay vertical.
+- Quality: Fast 160 / High 480 / Ultra 1200 samples (interiors ×2). Free and unlimited, nothing leaves the browser.
+- Browsers without WebGL2 float render targets fall back to the AI render.
+- "AI finishing touch" sends the finished frame to n8n (`Oxira Design` → `Check render request`, `source: "traced"`),
+  which asks `gpt-image-2` (quality high, direct `/v1/images/edits` call) for a Corona-style finish on the same
+  camera, layout and sun direction. It uses the same free quota as the AI render (3 per visitor, 150 per day).
+- Test hook: `?ptw=480` forces the render width.

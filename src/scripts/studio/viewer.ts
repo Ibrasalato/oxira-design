@@ -404,6 +404,49 @@ export class Viewer {
     return c.toDataURL(type, q);
   }
 
+  /**
+   * Scene and camera for the path-traced render: the model as it is shown now (same cut,
+   * ceiling and furniture state), a sun at the viewer's sun position, and a camera matching
+   * the current view at the given size. Walk views get two-point perspective (level camera
+   * with a shifted frame) so vertical walls stay vertical, as in architectural renders.
+   */
+  renderRig(w: number, h: number) {
+    const scene = new THREE.Scene();
+    const model = this.model.clone(true);
+    const ground = this.ground.clone();
+    scene.add(model, ground);
+    const interior = this.view === 'walk';
+    const sun = new THREE.DirectionalLight(0xfff0d8, interior ? 7 : 5);
+    // Side light: the sun comes from about 110° off the camera's heading (raking across the
+    // walls so their shadows fall into view), low enough to reach in through the windows.
+    const look = new THREE.Vector3();
+    this.camera.getWorldDirection(look);
+    const heading = Math.atan2(look.x, look.z) + THREE.MathUtils.degToRad(180 - 110);
+    const elev = THREE.MathUtils.degToRad(interior ? 32 : 42);
+    const dist = this.span * 3;
+    sun.position.set(Math.sin(heading) * Math.cos(elev) * dist, Math.sin(elev) * dist, Math.cos(heading) * Math.cos(elev) * dist);
+    sun.target.position.set(0, 0, 0);
+    scene.add(sun, sun.target);
+
+    const cam = this.camera.clone();
+    cam.aspect = w / h;
+    cam.clearViewOffset();
+    if (interior) {
+      const dir = new THREE.Vector3();
+      this.camera.getWorldDirection(dir);
+      const pitch = Math.asin(Math.max(-0.99, Math.min(0.99, dir.y)));
+      const flat = new THREE.Vector3(dir.x, 0, dir.z).normalize();
+      cam.up.set(0, 1, 0);
+      cam.lookAt(cam.position.clone().add(flat));
+      cam.updateProjectionMatrix();
+      const shift = Math.tan(pitch) / (2 * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2));
+      cam.setViewOffset(w, h, 0, -shift * h, w, h);
+    }
+    cam.updateProjectionMatrix();
+    cam.updateMatrixWorld(true);
+    return { scene, camera: cam, interior, sky: this.style.sky, span: this.span };
+  }
+
   private exportRoot() {
     const root = this.model.clone(true);
     root.traverse((o) => { o.visible = true; });
