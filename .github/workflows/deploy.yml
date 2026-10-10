@@ -64,14 +64,22 @@ jobs:
     steps:
       - name: Submit URLs
         run: |
-          sleep 30
+          sleep 60
           curl -fsSL https://design.oxira.sa/sitemap.xml | grep -o '<loc>[^<]*</loc>' | sed 's#</\?loc>##g' | sort -u > urls.txt
           wc -l urls.txt
           python3 - <<'PY'
-          import json, urllib.request
+          import json, time, urllib.request, urllib.error
           urls = [u.strip() for u in open('urls.txt') if u.strip()]
           for i in range(0, len(urls), 9000):
               body = json.dumps({"host": "design.oxira.sa", "key": "73715a4498cbb3099bf15e94f504f923", "keyLocation": "https://design.oxira.sa/73715a4498cbb3099bf15e94f504f923.txt", "urlList": urls[i:i + 9000]}).encode()
-              req = urllib.request.Request("https://api.indexnow.org/indexnow", data=body, headers={"Content-Type": "application/json; charset=utf-8"})
-              print(urllib.request.urlopen(req, timeout=60).status, len(urls[i:i + 9000]))
+              # Right after a deploy IndexNow may not see the key file yet, so retry a few times.
+              for attempt in range(4):
+                  try:
+                      req = urllib.request.Request("https://api.indexnow.org/indexnow", data=body, headers={"Content-Type": "application/json; charset=utf-8"})
+                      print(urllib.request.urlopen(req, timeout=60).status, len(urls[i:i + 9000]))
+                      break
+                  except urllib.error.HTTPError as e:
+                      print("attempt", attempt + 1, e.code, e.read()[:300])
+                      if attempt == 3: raise
+                      time.sleep(60)
           PY
