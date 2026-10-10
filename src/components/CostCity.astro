@@ -1,0 +1,125 @@
+---
+// /cost/<city>/: villa build cost in one city (Arabic and English), with examples and the calculator.
+import Base from '../layouts/Base.astro';
+import CostCalc from './CostCalc.astro';
+import { type Lang } from '../i18n/content';
+import { costText, cityText } from '../i18n/cost';
+import { BUNDLED_RATES, COST_CITIES, type Level } from '../lib/costRates';
+import { estimate } from '../lib/cost';
+import { link } from '../lib/routes';
+
+interface Props { lang: Lang; city: string }
+const { lang, city } = Astro.props;
+const x = costText[lang];
+const ct = cityText[lang]!;
+const meta = COST_CITIES.find((c) => c.id === city)!;
+const R = BUNDLED_RATES[meta.country];
+const name = x.cities[city];
+const locale = lang === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en';
+const nf = new Intl.NumberFormat(locale, { maximumFractionDigits: 0 });
+const cur = lang === 'ar' ? (R.currency === 'SAR' ? 'ريال' : 'جنيه') : R.currency;
+const base = { city, soil: 'good' as const, design: false, supervision: false, contingency: true, extras: 0 };
+const std = estimate(R, { ...base, area: 100, level: 'standard' });
+const levels: Level[] = ['economy', 'standard', 'luxury'];
+const sizes = [300, 400, 500];
+const rows = sizes.flatMap((a) => levels.map((l) => ({ a, l, r: estimate(R, { ...base, area: a, level: l }) })));
+const site = Astro.site!;
+const abs = (p: string) => new URL(link(lang, p), site).href;
+const faq = x.faq;
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: x.nav, item: abs('/cost/') },
+    { '@type': 'ListItem', position: 2, name, item: abs(`/cost/${city}/`) },
+  ] },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
+];
+---
+<Base lang={lang} path={`/cost/${city}/`} title={ct.title(name)} description={ct.desc(name)} ld={ld} langs={['ar', 'en']}>
+  <section class="page-hero">
+    <div class="wrap">
+      <p class="label"><a href={link(lang, '/cost/')}>{x.nav}</a></p>
+      <h1>{ct.h1(name)}</h1>
+      <p class="lead">{ct.intro(name, cur, nf.format(std.perM2[0]), nf.format(std.perM2[1]))}</p>
+    </div>
+  </section>
+
+  <section class="section-tight cy-ex">
+    <div class="wrap">
+      <h2>{ct.tableT(name)}</h2>
+      <div class="cy-tbl">
+        <table>
+          <thead><tr><th>{ct.size}</th><th>{ct.levelCol}</th><th>{x.total}</th><th>{ct.per}</th></tr></thead>
+          <tbody>
+            {rows.map(({ a, l, r }) => (
+              <tr class={l === 'standard' ? 'is-std' : ''}>
+                <td>{nf.format(a)} {x.m2}</td><td>{x.levels[l].t}</td>
+                <td dir="ltr">{nf.format(r.total[0])} – {nf.format(r.total[1])} {cur}</td>
+                <td dir="ltr">{nf.format(r.perM2[0])} – {nf.format(r.perM2[1])}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="cy-note">{x.note} {x.updated(new Date(BUNDLED_RATES.updated + '-01T12:00:00').toLocaleDateString(locale, { month: 'long', year: 'numeric' }))}</p>
+      <div class="cy-permit">
+        <h3>{ct.permitsT}</h3>
+        <p>{ct.permits[meta.country]}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight cy-calc">
+    <div class="wrap">
+      <h2>{ct.calcT}</h2>
+      <CostCalc lang={lang} country={meta.country} city={city} area={400} />
+    </div>
+  </section>
+
+  <section class="section-tight cy-more no-print">
+    <div class="wrap cy-grid">
+      <div class="cy-plans">
+        <h3>{ct.plansT}</h3>
+        <p>{ct.plansD}</p>
+        <a class="btn btn-amber" href={link(lang, '/plans/')}>{ct.plansCta}</a>
+      </div>
+      <div>
+        <h3>{ct.otherCities}</h3>
+        <nav class="cy-cities">{COST_CITIES.filter((c) => c.id !== city).map((c) => <a href={link(lang, `/cost/${c.id}/`)}>{x.cities[c.id]}</a>)}</nav>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight cy-faq no-print">
+    <div class="wrap">
+      <h2>{x.faqT}</h2>
+      <div class="cy-qa">{faq.map((f) => <details><summary>{f.q}</summary><p>{f.a}</p></details>)}</div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .page-hero .label a { color: inherit; text-decoration: none; }
+  .cy-ex { padding-top: 1rem; }
+  .cy-tbl { overflow-x: auto; margin-top: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: #fff; }
+  .cy-tbl table { width: 100%; border-collapse: collapse; font-size: .95rem; min-width: 560px; }
+  .cy-tbl th, .cy-tbl td { padding: .7rem .9rem; border-bottom: 1px solid var(--line); text-align: start; }
+  .cy-tbl th { background: var(--paper); font-weight: 700; }
+  .cy-tbl tr.is-std td { background: #FFF8E6; font-weight: 600; }
+  .cy-tbl td[dir='ltr'] { text-align: end; }
+  .cy-note { color: var(--muted); font-size: .9rem; margin-top: .8rem; }
+  .cy-permit { margin-top: 1.5rem; padding: 1.2rem 1.4rem; border-radius: var(--radius); background: var(--blue-soft); }
+  .cy-permit h3 { margin-bottom: .4rem; }
+  .cy-calc { padding-top: 0; }
+  .cy-calc h2 { margin-bottom: 1rem; }
+  .cy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  .cy-plans { padding: 1.4rem; border-radius: var(--radius); background: var(--navy); color: #fff; }
+  .cy-plans p { color: var(--muted-on-navy); margin: .5rem 0 1rem; }
+  .cy-cities { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
+  .cy-cities a { padding: .45rem .9rem; border-radius: 999px; border: 1.5px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 600; }
+  .cy-faq { padding-top: 0; }
+  .cy-qa { display: grid; gap: .6rem; max-width: 52rem; margin-top: 1rem; }
+  .cy-qa details { border: 1px solid var(--line); border-radius: 14px; padding: .9rem 1.1rem; background: #fff; }
+  .cy-qa summary { cursor: pointer; font-weight: 700; }
+  .cy-qa p { margin-top: .6rem; color: var(--muted); }
+  @media (max-width: 760px) { .cy-grid { grid-template-columns: 1fr; } }
+</style>

@@ -1,0 +1,52 @@
+---
+// /cost/: build-cost calculator page (all languages).
+import Base from '../layouts/Base.astro';
+import CostCalc from './CostCalc.astro';
+import { type Lang } from '../i18n/content';
+import { costText, cityText } from '../i18n/cost';
+import { COST_CITIES } from '../lib/costRates';
+import { link } from '../lib/routes';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const x = costText[lang];
+const hasCities = !!cityText[lang];
+const site = Astro.site!;
+const abs = (p: string) => new URL(link(lang, p), site).href;
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'WebApplication', name: x.h1, url: abs('/cost/'), applicationCategory: 'BusinessApplication', operatingSystem: 'Any', inLanguage: lang, offers: { '@type': 'Offer', price: 0, priceCurrency: 'SAR' } },
+  { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: x.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
+];
+---
+<Base lang={lang} path="/cost/" title={x.title} description={x.meta} ld={ld}>
+  <section class="page-hero cp-hero">
+    <div class="wrap">
+      <p class="label">{x.kicker}</p>
+      <h1>{x.h1}</h1>
+      <p class="lead">{x.lead}</p>
+      {hasCities && <nav class="cp-cities">{COST_CITIES.map((c) => <a href={link(lang, `/cost/${c.id}/`)}>{x.cities[c.id]}</a>)}</nav>}
+    </div>
+  </section>
+  <section class="section-tight cp-body"><div class="wrap"><CostCalc lang={lang} /></div></section>
+  <section class="section-tight cp-faq no-print">
+    <div class="wrap">
+      <h2>{x.faqT}</h2>
+      <div class="cp-qa">{x.faq.map((f) => <details><summary>{f.q}</summary><p>{f.a}</p></details>)}</div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .cp-hero { padding-bottom: 1rem; }
+  .cp-cities { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.4rem; }
+  .cp-cities a { padding: .45rem .9rem; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; color: var(--ink); text-decoration: none; font-weight: 600; font-size: .92rem; }
+  .cp-cities a:hover { border-color: var(--navy); }
+  .cp-body { padding-top: 1.5rem; }
+  .cp-faq { padding-top: 0; }
+  .cp-faq h2 { margin-bottom: 1rem; }
+  .cp-qa { display: grid; gap: .6rem; max-width: 52rem; }
+  .cp-qa details { border: 1px solid var(--line); border-radius: 14px; padding: .9rem 1.1rem; background: #fff; }
+  .cp-qa summary { cursor: pointer; font-weight: 700; }
+  .cp-qa p { margin-top: .6rem; color: var(--muted); }
+  @media print { .cp-hero .lead, .cp-cities { display: none; } .cp-hero { padding: 0 0 1rem; } }
+</style>

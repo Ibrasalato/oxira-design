@@ -169,3 +169,11 @@ The studio's render button runs a real path tracer in the visitor's browser
 ### Home page: “Our top services” (`src/components/TopServices.astro`, copy in `src/i18n/services.ts`)
 Featured photoreal render card (images in `public/img/services/`, real output of the studio pipeline) and eight service
 cards; prices come from `PRICES` and the listing price constant.
+
+## Build-cost calculator (/cost/, n8n "Oxira Design — Build costs", id fsUKrCb42YOFX9bI)
+- Page `/cost/` in all languages, plus city pages `/cost/<city>/` in Arabic and English (Riyadh, Jeddah, Dammam, Makkah, Madinah, Cairo, Giza, Alexandria). Plan pages link to it with the plan's built area.
+- Estimate logic: `src/lib/cost.ts`; bundled rates and sources: `src/lib/costRates.ts` (the fallback when n8n is unreachable). UI: `src/components/CostCalc.astro` + `src/scripts/cost.ts`; texts: `src/i18n/cost.ts`.
+- Live rates: `POST oxira-design-cost-rates` returns the newest row with status `active` in data table **oxira_design_cost_rates**. To change prices by hand, edit that row's `rates` JSON (same shape as `BUNDLED_RATES`).
+- Monthly, on the 1st: Claude with web search proposes new figures; changes over 35% are not taken. They are saved as a `pending` row and emailed to info@ with an approve link (`GET oxira-design-cost-approve?t=…`). Nothing changes on the site until the link is clicked.
+- Contractor quote requests: `POST oxira-design-build-quote` → data table **oxira_design_build_leads** + email to info@ (5 per IP and 300 overall per day, honeypot field).
+- Source of the workflow: `n8n/oxira-design-costs.workflow.ts` (expand with `node n8n/tools/expand-sdk.mjs` before pasting into the n8n SDK).

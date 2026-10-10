@@ -1,0 +1,8 @@
+---
+import CostCity from '../../../components/CostCity.astro';
+import { COST_CITIES } from '../../../lib/costRates';
+export function getStaticPaths() {
+  return COST_CITIES.map((c) => ({ params: { city: c.id } }));
+}
+---
+<CostCity lang="ar" city={Astro.params.city!} />

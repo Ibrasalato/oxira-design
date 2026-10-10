@@ -6,7 +6,7 @@ export type ServicesText = {
   label: string; title: string; lead: string;
   isNew: string; free: string; firstFree: string; from: string; perM2: string;
   before: string; after: string; interior: string;
-  render: Card; plan: Card; plans: Card; redesign: Card; engineer: Card; interiorDesign: Card; listing: Card; quotes: Card; designers: Card;
+  render: Card; plan: Card; plans: Card; redesign: Card; engineer: Card; interiorDesign: Card; listing: Card; quotes: Card; designers: Card; cost: Card;
 };
 
 const ar: ServicesText = {
@@ -23,6 +23,7 @@ const ar: ServicesText = {
   listing: { t: 'جولة 3D لإعلانك العقاري', d: 'حوّل المخطط لصفحة جولة ثلاثية الأبعاد مع رمز QR ونص إعلان جاهز بالعربي والإنجليزي.', cta: 'أنشئ جولة' },
   quotes: { t: 'عروض أسعار التشطيب', d: 'نحسب كميات الأرضيات والدهان والسيراميك من مخططك ونرسلها لمقاولين معتمدين.', cta: 'اطلب عروض أسعار' },
   designers: { t: 'مصممون معتمدون', d: 'تصفح مصممين ومهندسين راجعنا أعمالهم، واطلب من تختاره ينفذ مشروعك.', cta: 'تصفّح المصممين' },
+  cost: { t: 'كم تكلفة بناء فيلتك؟', d: 'حاسبة مجانية للعظم والتشطيب والأساسات بثلاثة مستويات، بأسعار هذا العام في السعودية ومصر.', cta: 'احسب التكلفة' },
 };
 
 const en: ServicesText = {
@@ -39,6 +40,7 @@ const en: ServicesText = {
   listing: { t: '3D tour for your property listing', d: 'Turn the plan into a shareable 3D tour page with a QR code and ready ad copy in Arabic and English.', cta: 'Create a tour' },
   quotes: { t: 'Finishing quotes', d: 'We calculate flooring, paint and tile quantities from your plan and send them to vetted contractors.', cta: 'Get quotes' },
   designers: { t: 'Vetted designers', d: 'Browse designers and engineers whose work we reviewed, and hire the one you like for your project.', cta: 'Browse designers' },
+  cost: { t: 'What will your villa cost to build?', d: 'A free calculator for shell, finishing and foundations at three levels, with this year’s prices for Saudi Arabia and Egypt.', cta: 'Estimate the cost' },
 };
 
 const de: ServicesText = {
@@ -55,6 +57,7 @@ const de: ServicesText = {
   listing: { t: '3D-Tour für Ihr Immobilieninserat', d: 'Aus dem Plan wird eine teilbare 3D-Tour mit QR-Code und fertigem Anzeigentext auf Arabisch und Englisch.', cta: 'Tour erstellen' },
   quotes: { t: 'Angebote für den Ausbau', d: 'Wir berechnen Mengen für Böden, Farbe und Fliesen aus Ihrem Plan und senden sie an geprüfte Handwerker.', cta: 'Angebote anfordern' },
   designers: { t: 'Geprüfte Designer', d: 'Designer und Ingenieure mit geprüften Arbeiten ansehen und den passenden für Ihr Projekt beauftragen.', cta: 'Designer ansehen' },
+  cost: { t: 'Was kostet der Bau Ihrer Villa?', d: 'Kostenloser Rechner für Rohbau, Ausbau und Fundamente in drei Stufen mit aktuellen Preisen für Saudi-Arabien und Ägypten.', cta: 'Kosten schätzen' },
 };
 
 const fr: ServicesText = {
@@ -71,6 +74,7 @@ const fr: ServicesText = {
   listing: { t: 'Visite 3D pour votre annonce', d: 'Transformez le plan en page de visite 3D partageable avec QR code et texte d’annonce prêt en arabe et en anglais.', cta: 'Créer une visite' },
   quotes: { t: 'Devis de finition', d: 'Nous calculons sols, peinture et carrelage depuis votre plan et les envoyons à des artisans vérifiés.', cta: 'Obtenir des devis' },
   designers: { t: 'Designers vérifiés', d: 'Parcourez des designers et ingénieurs dont nous avons vérifié les travaux et confiez-leur votre projet.', cta: 'Voir les designers' },
+  cost: { t: 'Combien coûtera votre villa ?', d: 'Calculateur gratuit du gros œuvre, des finitions et des fondations sur trois niveaux, aux prix de cette année en Arabie saoudite et en Égypte.', cta: 'Estimer le coût' },
 };
 
 const ru: ServicesText = {
@@ -87,6 +91,7 @@ const ru: ServicesText = {
   listing: { t: '3D-тур для объявления', d: 'Превратите план в страницу 3D-тура с QR-кодом и готовым текстом объявления на арабском и английском.', cta: 'Создать тур' },
   quotes: { t: 'Сметы на отделку', d: 'Считаем объёмы полов, покраски и плитки по вашему плану и отправляем проверенным подрядчикам.', cta: 'Получить сметы' },
   designers: { t: 'Проверенные дизайнеры', d: 'Смотрите дизайнеров и инженеров с проверенными работами и выбирайте исполнителя для проекта.', cta: 'Смотреть дизайнеров' },
+  cost: { t: 'Сколько стоит построить виллу?', d: 'Бесплатный расчёт каркаса, отделки и фундамента в трёх уровнях по ценам этого года для Саудовской Аравии и Египта.', cta: 'Рассчитать' },
 };
 
 const es: ServicesText = {
@@ -103,6 +108,7 @@ const es: ServicesText = {
   listing: { t: 'Recorrido 3D para tu anuncio', d: 'Convierte el plano en una página de recorrido 3D con código QR y texto de anuncio listo en árabe e inglés.', cta: 'Crear recorrido' },
   quotes: { t: 'Presupuestos de acabados', d: 'Calculamos suelos, pintura y azulejos desde tu plano y los enviamos a contratistas verificados.', cta: 'Pedir presupuestos' },
   designers: { t: 'Diseñadores verificados', d: 'Explora diseñadores e ingenieros con trabajos revisados y contrata al que prefieras para tu proyecto.', cta: 'Ver diseñadores' },
+  cost: { t: '¿Cuánto costará construir tu villa?', d: 'Calculadora gratuita de estructura, acabados y cimentación en tres niveles, con precios de este año en Arabia Saudí y Egipto.', cta: 'Calcular el coste' },
 };
 
 const tr: ServicesText = {
@@ -119,6 +125,7 @@ const tr: ServicesText = {
   listing: { t: 'İlanınız için 3D tur', d: 'Planı QR kodlu, Arapça ve İngilizce hazır ilan metinli paylaşılabilir bir 3D tur sayfasına dönüştürün.', cta: 'Tur oluştur' },
   quotes: { t: 'İnce işçilik teklifleri', d: 'Planınızdan zemin, boya ve seramik miktarlarını hesaplayıp onaylı ustalara göndeririz.', cta: 'Teklif iste' },
   designers: { t: 'Onaylı tasarımcılar', d: 'İşlerini incelediğimiz tasarımcı ve mühendislere göz atın, projeniz için dilediğinizle çalışın.', cta: 'Tasarımcılara göz at' },
+  cost: { t: 'Villanızın inşaatı ne kadar tutar?', d: 'Suudi Arabistan ve Mısır için bu yılın fiyatlarıyla kaba inşaat, ince işçilik ve temelde üç seviyeli ücretsiz hesaplayıcı.', cta: 'Maliyeti hesapla' },
 };
 
 const zh: ServicesText = {
@@ -135,6 +142,7 @@ const zh: ServicesText = {
   listing: { t: '房产广告 3D 看房', d: '将平面图变成可分享的 3D 看房页面，附二维码及阿拉伯语和英语广告文案。', cta: '创建看房' },
   quotes: { t: '装修报价', d: '根据平面图计算地板、涂料和瓷砖用量，并发送给认证承包商。', cta: '获取报价' },
   designers: { t: '认证设计师', d: '浏览我们审核过作品的设计师和工程师，选择您喜欢的人来完成项目。', cta: '浏览设计师' },
+  cost: { t: '建造别墅要花多少钱？', d: '免费计算主体、装修和地基三个档次的成本，采用沙特和埃及今年的价格。', cta: '估算成本' },
 };
 
 const hi: ServicesText = {
@@ -151,6 +159,7 @@ const hi: ServicesText = {
   listing: { t: 'प्रॉपर्टी विज्ञापन के लिए 3D टूर', d: 'प्लान को QR कोड और अरबी-अंग्रेज़ी में तैयार विज्ञापन टेक्स्ट वाले शेयर करने योग्य 3D टूर पेज में बदलें।', cta: 'टूर बनाएँ' },
   quotes: { t: 'फ़िनिशिंग कोटेशन', d: 'आपके प्लान से फ़्लोरिंग, पेंट और टाइल की मात्रा निकालकर भरोसेमंद ठेकेदारों को भेजते हैं।', cta: 'कोटेशन लें' },
   designers: { t: 'जाँचे-परखे डिज़ाइनर', d: 'ऐसे डिज़ाइनर और इंजीनियर देखें जिनका काम हमने जाँचा है, और अपने प्रोजेक्ट के लिए चुनें।', cta: 'डिज़ाइनर देखें' },
+  cost: { t: 'आपका विला बनाने में कितना लगेगा?', d: 'सऊदी अरब और मिस्र की इस साल की कीमतों के साथ ढाँचा, फ़िनिशिंग और नींव का तीन स्तरों में मुफ़्त कैलकुलेटर।', cta: 'लागत निकालें' },
 };
 
 const ur: ServicesText = {
@@ -167,6 +176,7 @@ const ur: ServicesText = {
   listing: { t: 'پراپرٹی اشتہار کے لیے 3D ٹور', d: 'نقشے کو QR کوڈ اور عربی و انگریزی میں تیار اشتہاری متن والے قابلِ اشتراک 3D ٹور صفحے میں بدلیں۔', cta: 'ٹور بنائیں' },
   quotes: { t: 'فنشنگ کی قیمتیں', d: 'آپ کے نقشے سے فرش، پینٹ اور ٹائل کی مقدار نکال کر معتبر ٹھیکیداروں کو بھیجتے ہیں۔', cta: 'قیمتیں منگوائیں' },
   designers: { t: 'تصدیق شدہ ڈیزائنرز', d: 'ایسے ڈیزائنرز اور انجینئرز دیکھیں جن کا کام ہم نے جانچا ہے، اور اپنے منصوبے کے لیے منتخب کریں۔', cta: 'ڈیزائنرز دیکھیں' },
+  cost: { t: 'آپ کا ولا بنانے میں کتنا لگے گا؟', d: 'سعودی عرب اور مصر کی اس سال کی قیمتوں کے ساتھ ڈھانچہ، فنشنگ اور بنیاد کا تین درجوں میں مفت کیلکولیٹر۔', cta: 'لاگت معلوم کریں' },
 };
 
 export const servicesText: Record<Lang, ServicesText> = { ar, en, de, fr, ru, es, tr, zh, hi, ur };

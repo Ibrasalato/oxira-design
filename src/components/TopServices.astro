@@ -22,7 +22,7 @@ const cards = [
   { k: 'interiorDesign', icon: 'people', href: '#order', pkg: 'design', tag: `${x.from} ${fmt(PRICES.designPerM2)} ${cur} ${x.perM2}` },
   { k: 'listing', icon: 'megaphone', href: studio, tag: `${fmt(LISTING_PRICE)} ${cur}` },
   { k: 'quotes', icon: 'ruler', href: studio, tag: x.free },
-  { k: 'designers', icon: 'user', href: link(lang, '/designers/'), tag: '' },
+  { k: 'cost', icon: 'file', href: link(lang, '/cost/'), tag: x.isNew, hot: true },
 ] as const;
 ---
 <section class="section ts" id="services" aria-labelledby="ts-title">

@@ -1,4 +1,5 @@
 ---
+import { costText } from '../i18n/cost';
 // One ready-made plan page: plan drawings for every floor (from the generator, at build time),
 // room schedule, facts, and a link that opens the same plan in the editor.
 import Base from '../layouts/Base.astro';
@@ -81,6 +82,7 @@ const ld = [
       <div class="pp-cta">
         <a class="btn btn-amber" href={editHref}><Icon name="pencil" />{P.open}</a>
         <a class="btn btn-ghost" href={`${link(lang, '/plan/')}?plan=${spec.slug}&v=${spec.variant}#pl-order`}><Icon name="people" />{P.order}</a>
+        <a class="btn btn-ghost" href={`${link(lang, '/cost/')}?area=${Math.round(tt.built)}&plan=${spec.slug}`}><Icon name="ruler" />{costText[lang].planCta}</a>
       </div>
       <p class="pp-sub">{P.openSub}</p>
     </div>

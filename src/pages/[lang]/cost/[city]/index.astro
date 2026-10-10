@@ -1,0 +1,10 @@
+---
+// City cost pages exist in Arabic (/cost/<city>/) and English only.
+import CostCity from '../../../../components/CostCity.astro';
+import { COST_CITIES } from '../../../../lib/costRates';
+import type { Lang } from '../../../../i18n/content';
+export function getStaticPaths() {
+  return COST_CITIES.map((c) => ({ params: { lang: 'en', city: c.id } }));
+}
+---
+<CostCity lang={Astro.params.lang as Lang} city={Astro.params.city!} />

@@ -1,4 +1,5 @@
 ---
+import { costText } from '../i18n/cost';
 import { t, CONTACT, type Lang } from '../i18n/content';
 import { link } from '../lib/routes';
 import Logo from './Logo.astro';
@@ -38,6 +39,7 @@ const guideLinks = gl ? GUIDES.filter((g) => g.kind === 'service').map((g) => ({
         <li><a href={link(lang, '/studio/')}>{c.nav.studio}</a></li>
         <li><a href={link(lang, '/plan/')}>{pl[lang].nav}</a></li>
         <li><a href={link(lang, '/plans/')}>{plans[lang].nav}</a></li>
+        <li><a href={link(lang, '/cost/')}>{costText[lang].nav}</a></li>
         <li><a href={link(lang, '/gallery/')}>{growth[lang].gallery.nav}</a></li>
         <li><a href={link(lang, '/designers/')}>{growth[lang].designers.nav}</a></li>
         <li><a href={link(lang, '/redesign/')}>{rd[lang].nav}</a></li>

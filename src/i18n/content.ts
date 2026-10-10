@@ -30,6 +30,8 @@ export const N8N = {
   redesignWallet: HOOK + 'oxira-redesign-wallet',
   redesignBuy: HOOK + 'oxira-redesign-buy',
   finishing: HOOK + 'oxira-design-finishing',
+  costRates: HOOK + 'oxira-design-cost-rates',
+  buildQuote: HOOK + 'oxira-design-build-quote',
   listing: HOOK + 'oxira-design-listing',
   listingGet: HOOK + 'oxira-design-listing-get',
   planAi: HOOK + 'oxira-plan-ai',

@@ -1,0 +1,187 @@
+---
+// Build-cost calculator (logic in src/scripts/cost.ts, engine in src/lib/cost.ts).
+// Live rates come from n8n (oxira-design-cost-rates); the bundled rates are the fallback.
+import { N8N, CONTACT, type Lang } from '../i18n/content';
+import { costText } from '../i18n/cost';
+import { BUNDLED_RATES, COST_SOURCES, type CountryCode } from '../lib/costRates';
+import Icon from './Icon.astro';
+
+interface Props { lang: Lang; country?: CountryCode; city?: string; area?: number }
+const { lang, country = 'SA', city = '', area = 400 } = Astro.props;
+const x = costText[lang];
+const cfg = { lang, rates: BUNDLED_RATES, live: N8N.costRates, quote: N8N.buildQuote, whatsapp: CONTACT.whatsapp, country, city, area };
+const levels = ['economy', 'standard', 'luxury'] as const;
+const soils = ['good', 'average', 'raft', 'piles'] as const;
+---
+<div class="cc" id="cc" data-cfg={JSON.stringify(cfg)} data-t={JSON.stringify({ ...x, builtIs: x.builtIs('{n}'), updated: x.updated('{d}'), fromPlan: x.fromPlan('{s}'), ok: x.ok('{id}') })}>
+  <form class="cc-form" id="cc-form" autocomplete="off">
+    <div class="cc-row">
+      <label class="cc-f"><span>{x.country}</span>
+        <select name="country"><option value="SA">{x.countries.SA}</option><option value="EG">{x.countries.EG}</option></select>
+      </label>
+      <label class="cc-f"><span>{x.city}</span><select name="city"></select></label>
+    </div>
+
+    <fieldset class="cc-f">
+      <legend>{x.areaMode}</legend>
+      <div class="cc-seg" role="radiogroup">
+        <label><input type="radio" name="mode" value="area" checked /><span>{x.modeArea}</span></label>
+        <label><input type="radio" name="mode" value="plot" /><span>{x.modePlot}</span></label>
+      </div>
+    </fieldset>
+    <div class="cc-mode" data-mode="area">
+      <label class="cc-f"><span>{x.area}</span><input name="area" type="number" min="20" max="20000" step="1" inputmode="numeric" value={area} /></label>
+      <p class="cc-hint" id="cc-plan" hidden></p>
+    </div>
+    <div class="cc-mode" data-mode="plot" hidden>
+      <div class="cc-row">
+        <label class="cc-f"><span>{x.plotW}</span><input name="w" type="number" min="5" max="200" step="0.5" inputmode="decimal" value="20" /></label>
+        <label class="cc-f"><span>{x.plotD}</span><input name="d" type="number" min="5" max="200" step="0.5" inputmode="decimal" value="30" /></label>
+      </div>
+      <div class="cc-row">
+        <label class="cc-f"><span>{x.floors}</span><select name="floors"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
+        <label class="cc-f"><span>{x.coverage}</span><input name="cov" type="number" min="10" max="100" step="1" inputmode="numeric" value="60" /></label>
+      </div>
+      <label class="cc-f"><span>{x.annex}</span><input name="annex" type="number" min="0" max="2000" step="1" inputmode="numeric" value="0" /></label>
+      <p class="cc-hint" id="cc-built"></p>
+    </div>
+
+    <fieldset class="cc-f">
+      <legend>{x.level}</legend>
+      <div class="cc-levels">
+        {levels.map((l) => (
+          <label class="cc-level"><input type="radio" name="level" value={l} checked={l === 'standard'} /><span><b>{x.levels[l].t}</b><small>{x.levels[l].d}</small></span></label>
+        ))}
+      </div>
+    </fieldset>
+
+    <label class="cc-f"><span>{x.soil}</span>
+      <select name="soil">{soils.map((s) => <option value={s}>{x.soils[s]}</option>)}</select>
+    </label>
+
+    <div class="cc-checks">
+      <label><input type="checkbox" name="cont" checked /> {x.contingency}</label>
+      <label><input type="checkbox" name="design" /> {x.design}</label>
+      <label><input type="checkbox" name="sup" /> {x.supervision}</label>
+    </div>
+
+    <label class="cc-f"><span>{x.extras}</span><input name="extras" type="number" min="0" step="1000" inputmode="numeric" value="0" /></label>
+    <p class="cc-hint">{x.extrasHint}</p>
+  </form>
+
+  <section class="cc-out" id="cc-out" aria-live="polite">
+    <p class="cc-k">{x.total}</p>
+    <p class="cc-total" id="cc-total">—</p>
+    <p class="cc-per" id="cc-per"></p>
+
+    <div class="cc-split" id="cc-split"></div>
+
+    <h3>{x.breakdown}</h3>
+    <ul class="cc-lines" id="cc-lines"></ul>
+
+    <h3>{x.compare}</h3>
+    <table class="cc-cmp" id="cc-cmp"><tbody></tbody></table>
+
+    <p class="cc-ref" id="cc-ref"></p>
+    <p class="cc-note">{x.note}</p>
+    <p class="cc-upd" id="cc-upd"></p>
+
+    <div class="cc-actions no-print">
+      <button type="button" class="btn btn-navy" id="cc-print"><Icon name="file" />{x.print}</button>
+      <button type="button" class="btn btn-ghost" id="cc-copy">{x.copy}</button>
+    </div>
+  </section>
+</div>
+
+<section class="cc-quote no-print" id="quote">
+  <div>
+    <h2>{x.quoteT}</h2>
+    <p>{x.quoteD}</p>
+  </div>
+  <form id="cc-qform" class="cc-qform">
+    <label class="cc-f"><span>{x.name}</span><input name="name" required maxlength="120" autocomplete="name" /></label>
+    <label class="cc-f"><span>{x.phone}</span><input name="phone" required type="tel" dir="ltr" maxlength="40" autocomplete="tel" /></label>
+    <label class="cc-f"><span>{x.email}</span><input name="email" type="email" dir="ltr" maxlength="160" autocomplete="email" /></label>
+    <label class="cc-f cc-wide"><span>{x.notes}</span><textarea name="notes" rows="3" maxlength="2000"></textarea></label>
+    <input class="cc-hp" name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+    <button type="submit" class="btn btn-amber cc-wide">{x.send}</button>
+    <p class="cc-qmsg cc-wide" id="cc-qmsg" role="status" hidden></p>
+  </form>
+</section>
+
+<details class="cc-src no-print">
+  <summary>{x.sources}</summary>
+  <ul>{COST_SOURCES.map((s) => <li><a href={s.url} target="_blank" rel="noopener nofollow">{s.title}</a></li>)}</ul>
+</details>
+
+<script>
+  import { startCost } from '../scripts/cost.ts';
+  startCost(document.getElementById('cc')!);
+</script>
+
+<style>
+  .cc { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(1.25rem, 3vw, 2.25rem); align-items: start; }
+  .cc-form { display: grid; gap: 1rem; background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: clamp(1.2rem, 2.5vw, 1.8rem); }
+  .cc-row { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .cc-f { display: grid; gap: .35rem; border: 0; padding: 0; margin: 0; min-width: 0; }
+  .cc-f > span, .cc-f > legend { font-weight: 700; font-size: .92rem; color: var(--ink); padding: 0; margin-bottom: .1rem; }
+  .cc-f input, .cc-f select, .cc-f textarea { font: inherit; width: 100%; padding: .65rem .8rem; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
+  .cc-f input:focus, .cc-f select:focus, .cc-f textarea:focus { outline: none; border-color: var(--blue); }
+  .cc-seg { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+  .cc-seg label, .cc-level { position: relative; cursor: pointer; }
+  .cc-seg input, .cc-level input { position: absolute; opacity: 0; }
+  .cc-seg span { display: block; text-align: center; padding: .6rem .5rem; border-radius: 12px; border: 1.5px solid var(--line); font-weight: 600; font-size: .9rem; }
+  .cc-seg input:checked + span, .cc-level input:checked + span { border-color: var(--navy); background: var(--navy); color: #fff; }
+  .cc-seg input:focus-visible + span, .cc-level input:focus-visible + span { outline: 2px solid var(--amber); }
+  .cc-levels { display: grid; gap: .45rem; }
+  .cc-level span { display: grid; gap: .15rem; padding: .7rem .9rem; border-radius: 14px; border: 1.5px solid var(--line); }
+  .cc-level small { color: var(--muted); font-size: .84rem; }
+  .cc-level input:checked + span small { color: rgba(255,255,255,.75); }
+  .cc-checks { display: grid; gap: .45rem; font-size: .95rem; }
+  .cc-checks input { width: 18px; height: 18px; accent-color: var(--blue); vertical-align: -3px; margin-inline-end: .35rem; }
+  .cc-hint { color: var(--muted); font-size: .86rem; margin: -.4rem 0 0; }
+  .cc-out { position: sticky; top: 90px; background: var(--navy); color: #fff; border-radius: var(--radius-lg); padding: clamp(1.3rem, 3vw, 2rem); }
+  .cc-k { color: var(--amber); font-weight: 700; }
+  .cc-total { font-size: clamp(1.7rem, 3.4vw, 2.5rem); font-weight: 800; line-height: 1.2; margin: .3rem 0; direction: ltr; text-align: start; unicode-bidi: plaintext; }
+  .cc-per { color: var(--muted-on-navy); }
+  .cc-split { display: flex; height: 10px; border-radius: 6px; overflow: hidden; margin: 1rem 0 .4rem; background: rgba(255,255,255,.1); }
+  .cc-split :global(i) { display: block; height: 100%; }
+  .cc-out h3 { font-size: 1rem; margin: 1.3rem 0 .6rem; color: #fff; }
+  .cc-lines { list-style: none; padding: 0; margin: 0; display: grid; gap: .45rem; }
+  .cc-lines :global(li) { display: grid; grid-template-columns: auto 1fr auto; gap: .6rem; align-items: center; font-size: .92rem; }
+  .cc-lines :global(.dot) { width: 10px; height: 10px; border-radius: 3px; }
+  .cc-lines :global(b) { font-weight: 700; direction: ltr; unicode-bidi: plaintext; white-space: nowrap; }
+  .cc-cmp { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  .cc-cmp :global(td) { padding: .45rem .3rem; border-bottom: 1px solid rgba(255,255,255,.12); }
+  .cc-cmp :global(td:last-child) { text-align: end; font-weight: 700; direction: ltr; unicode-bidi: plaintext; white-space: nowrap; }
+  .cc-cmp :global(tr.is-on td) { color: var(--amber); }
+  .cc-ref { margin-top: 1rem; font-size: .86rem; color: var(--muted-on-navy); }
+  .cc-note { margin-top: .8rem; font-size: .84rem; color: var(--muted-on-navy); }
+  .cc-upd { font-size: .8rem; color: var(--muted-on-navy); margin-top: .3rem; }
+  .cc-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.2rem; }
+  .cc-actions .btn-ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
+  .cc-actions :global(.ic) { width: 18px; height: 18px; }
+  .cc-quote { display: grid; grid-template-columns: .9fr 1.1fr; gap: 1.5rem 2rem; margin-top: 2rem; padding: clamp(1.3rem, 3vw, 2rem); border-radius: var(--radius-lg); background: var(--blue-soft); }
+  .cc-quote h2 { font-size: clamp(1.3rem, 2.4vw, 1.7rem); }
+  .cc-quote p { color: var(--muted); margin-top: .5rem; }
+  .cc-qform { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .cc-wide { grid-column: 1 / -1; }
+  .cc-hp { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); opacity: 0; pointer-events: none; }
+  .cc-qmsg { margin: 0; font-weight: 600; }
+  .cc-qmsg.is-err { color: #B42318; }
+  .cc-src { margin-top: 1.5rem; font-size: .9rem; color: var(--muted); }
+  .cc-src summary { cursor: pointer; font-weight: 700; }
+  .cc-src ul { margin: .6rem 0 0; padding-inline-start: 1.2rem; display: grid; gap: .3rem; }
+  @media (max-width: 900px) {
+    .cc, .cc-quote { grid-template-columns: 1fr; }
+    .cc-out { position: static; }
+  }
+  @media (max-width: 520px) { .cc-row, .cc-qform { grid-template-columns: 1fr; } }
+  @media print {
+    :global(header), :global(footer), :global(.no-print), :global(#ox-chat), :global(.chat-fab), :global(.consent) { display: none !important; }
+    .cc { grid-template-columns: 1fr 1fr; }
+    .cc-out { position: static; background: #fff; color: #0A253E; border: 1px solid #ccc; }
+    .cc-out h3, .cc-per, .cc-ref, .cc-note, .cc-upd { color: #0A253E; }
+    .cc-cmp :global(td) { border-color: #ddd; }
+  }
+</style>
