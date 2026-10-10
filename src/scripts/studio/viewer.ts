@@ -444,7 +444,7 @@ export class Viewer {
     }
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld(true);
-    return { scene, camera: cam, interior, sky: this.style.sky, span: this.span };
+    return { scene, camera: cam, interior, sky: this.style.sky, span: this.span, root: model, plan: this.plan!, style: this.style, toWorld: this.toWorld };
   }
 
   private exportRoot() {

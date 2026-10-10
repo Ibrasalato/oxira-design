@@ -5,8 +5,14 @@
 import * as THREE from 'three';
 import { WebGLPathTracer, GradientEquirectTexture, DenoiseMaterial } from 'three-gpu-pathtracer';
 import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
+import { enhanceForRender } from './renderkit.ts';
+import type { Plan } from './plan.ts';
+import type { Style } from './styles.ts';
 
-export type Rig = { scene: THREE.Scene; camera: THREE.PerspectiveCamera; interior: boolean; sky: string; span: number };
+export type Rig = {
+  scene: THREE.Scene; camera: THREE.PerspectiveCamera; interior: boolean; sky: string; span: number;
+  root: THREE.Object3D; plan: Plan; style: Style; toWorld: (x: number, y: number) => THREE.Vector3;
+};
 export type TraceOptions = {
   width: number; height: number; samples: number;
   /** called every frame with the live canvas so the page can show it converging */
@@ -54,6 +60,7 @@ export function trace(rig: Rig, o: TraceOptions): Trace {
   pt.dynamicLowRes = false;
   pt.rasterizeScene = true;
   pt.tiles.set(2, 2);
+  pt.textureSize.set(512, 512); // our procedural maps are 512 px; keeps GPU memory low on phones
 
   const denoise = new FullScreenQuad(new DenoiseMaterial({ map: null } as any));
   const dm = denoise.material as any;
@@ -73,6 +80,8 @@ export function trace(rig: Rig, o: TraceOptions): Trace {
 
   const done = (async () => {
     await new Promise((r) => setTimeout(r, 30)); // let the dialog paint first
+    try { enhanceForRender({ root: rig.root, scene: rig.scene, plan: rig.plan, style: rig.style, toWorld: rig.toWorld, interior: rig.interior }); }
+    catch (e) { console.warn('render upgrade skipped', e); }
     rig.scene.updateMatrixWorld(true); // the sun's direction comes from its world matrix and its target's
     pt.setScene(rig.scene, rig.camera);
     let measured = 0;

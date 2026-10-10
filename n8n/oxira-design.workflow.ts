@@ -692,7 +692,7 @@ const checkRender = node({
     parameters: {
       mode: 'runOnceForAllItems',
       language: 'javaScript',
-      jsCode: "// Validates the image, applies the free quota (3 per visitor per day, 150 per day overall) and writes the prompt.\n// source \"traced\": a path-traced render from the studio (correct light and shadows) gets a Corona-style finishing pass.\n// source \"snapshot\": a plain viewport screenshot is turned into a render.\nconst PER_VISITOR = 3, PER_DAY = 150;\nconst MODEL = 'gpt-image-2';\nlet b = $input.first().json.body;\nif (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }\nb = b || {};\nconst sid = String(b.sessionId || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 64);\nconst m = String(b.image || '').match(/^data:image\\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);\nconst day = $now.setZone('Asia/Riyadh').toFormat('yyyy-MM-dd');\nconst styles = {\n  modern: 'modern minimalist interior: warm white walls, light oak wood floors with visible grain, grey boucle fabric sofa, black metal details, linen curtains, clean lines',\n  classic: 'classic elegant interior: cream walls with mouldings, dark walnut wood floors, marble, burgundy upholstery, brass details, silk curtains',\n  najdi: 'contemporary Najdi Saudi interior: earthy beige plaster walls, terracotta tiles, traditional Arabic majlis floor seating with red patterned cushions, carved dark wood doors, warm lantern lighting',\n  scandi: 'Scandinavian interior: white walls, pale ash wood floors, light grey textiles, wool throws, potted plants, airy and bright',\n  luxury: 'luxury interior: polished white marble floors with soft reflections, warm grey walls, dark wood panels, emerald velvet, brushed gold details, designer lighting',\n};\nconst views = { top: 'aerial cutaway dollhouse view looking down at the whole home, walls cut at mid height', orbit: 'three-quarter aerial dollhouse view of the home with the roof removed', walk: 'eye-level interior photograph inside the room, two-point perspective with vertical lines kept vertical' };\nconst style = styles[b.style] ? b.style : 'modern';\nconst view = views[b.view] ? b.view : 'orbit';\nconst traced = b.source === 'traced';\nconst base = { session_id: sid, style, view, source: traced ? 'traced' : 'snapshot', model: MODEL, quality: traced ? 'high' : 'medium', lang: ['ar', 'en', 'de', 'fr', 'ru', 'es', 'tr', 'zh', 'hi', 'ur'].includes(b.lang) ? b.lang : 'ar', day };\nif (!sid || sid.length < 6 || !m || m[2].length > 4000000) return [{ json: Object.assign(base, { allowed: false, reason: 'invalid', remaining: 0 }) }];\nconst st = $getWorkflowStaticData('global');\nif (!st.renders || st.renders.day !== day) st.renders = { day, total: 0, by: {} };\nconst used = st.renders.by[sid] || 0;\nif (used >= PER_VISITOR || st.renders.total >= PER_DAY) return [{ json: Object.assign(base, { allowed: false, reason: 'limit', remaining: 0 }) }];\nst.renders.by[sid] = used + 1;\nst.renders.total += 1;\nconst corona = 'Final look: a high-end architectural visualization as produced with Corona Renderer in 3ds Max: physically accurate global illumination, soft bounced light in the shadows, warm sun patches with crisp contact shadows, gentle bloom and glare around bright windows, true-to-life PBR materials with fine surface detail (wood grain, fabric weave, subtle floor reflections), natural white balance, filmic contrast, crisp and noise-free. ';\nconst keep = 'Keep exactly the same camera position, angle and perspective, the same walls, doors, windows, room layout and furniture positions; do not add or remove rooms, openings or major furniture and do not change proportions. ';\nconst prompt = traced\n  ? 'This image is a physically based path-traced render of a 3D model of a home; its lighting, sun direction and shadows are correct. Finish it into a photorealistic render. ' + keep + 'Keep the direction of the sunlight and shadows. View: ' + views[view] + '. Style: ' + styles[style] + '. Add tasteful realistic decor consistent with the style (rugs, cushions, books, plants, art) without moving the furniture. ' + corona + 'No people, no text, no labels, no watermark.'\n  : 'Turn this rough 3D model screenshot into a photorealistic architectural render. ' + keep + 'View: ' + views[view] + '. Style: ' + styles[style] + '. ' + corona + 'Soft natural daylight. Remove any labels or interface elements. No people, no text, no watermark.';\nreturn [{ json: Object.assign(base, { allowed: true, remaining: PER_VISITOR - used - 1, prompt }), binary: { image: { data: m[2], mimeType: 'image/' + m[1], fileName: 'view.' + (m[1] === 'jpeg' ? 'jpg' : m[1]), fileExtension: m[1] === 'jpeg' ? 'jpg' : m[1] } } }];"
+      jsCode: "// Validates the image, applies the free quota (3 per visitor per day, 150 per day overall) and writes the prompt.\n// source \"traced\": a path-traced render from the studio (correct light and shadows) gets a Corona-style finishing pass.\n// source \"snapshot\": a plain viewport screenshot is turned into a render.\n// ref (optional): an earlier approved render of the same home and style; sent as a second image so views match.\nconst PER_VISITOR = 3, PER_DAY = 150;\nconst MODEL = 'gpt-image-2';\nlet b = $input.first().json.body;\nif (typeof b === 'string') { try { b = JSON.parse(b); } catch (e) { b = {}; } }\nb = b || {};\nconst sid = String(b.sessionId || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 64);\nconst m = String(b.image || '').match(/^data:image\\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);\nconst rm = String(b.ref || '').match(/^data:image\\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/);\nconst hasRef = !!(rm && rm[2].length < 1500000);\nconst day = $now.setZone('Asia/Riyadh').toFormat('yyyy-MM-dd');\nconst styles = {\n  modern: 'modern minimalist interior: warm white walls, light oak wood floors with visible grain, grey boucle fabric sofa, black metal details, linen curtains, clean lines',\n  classic: 'classic elegant interior: cream walls with mouldings, dark walnut wood floors, marble, burgundy upholstery, brass details, silk curtains',\n  najdi: 'contemporary Najdi Saudi interior: earthy beige plaster walls, terracotta tiles, traditional Arabic majlis floor seating with red patterned cushions, carved dark wood doors, warm lantern lighting',\n  scandi: 'Scandinavian interior: white walls, pale ash wood floors, light grey textiles, wool throws, potted plants, airy and bright',\n  luxury: 'luxury interior: polished white marble floors with soft reflections, warm grey walls, dark wood panels, emerald velvet, brushed gold details, designer lighting',\n};\nconst views = { top: 'aerial cutaway dollhouse view looking down at the whole home, walls cut at mid height', orbit: 'three-quarter aerial dollhouse view of the home with the roof removed', walk: 'eye-level interior photograph inside the room, two-point perspective with vertical lines kept vertical' };\nconst style = styles[b.style] ? b.style : 'modern';\nconst view = views[b.view] ? b.view : 'orbit';\nconst traced = b.source === 'traced';\nconst base = { session_id: sid, style, view, source: traced ? 'traced' : 'snapshot', has_ref: hasRef, model: MODEL, quality: traced ? 'high' : 'medium', lang: ['ar', 'en', 'de', 'fr', 'ru', 'es', 'tr', 'zh', 'hi', 'ur'].includes(b.lang) ? b.lang : 'ar', day };\nif (!sid || sid.length < 6 || !m || m[2].length > 4000000) return [{ json: Object.assign(base, { allowed: false, reason: 'invalid', remaining: 0 }) }];\nconst st = $getWorkflowStaticData('global');\nif (!st.renders || st.renders.day !== day) st.renders = { day, total: 0, by: {} };\nconst used = st.renders.by[sid] || 0;\nif (used >= PER_VISITOR || st.renders.total >= PER_DAY) return [{ json: Object.assign(base, { allowed: false, reason: 'limit', remaining: 0 }) }];\nst.renders.by[sid] = used + 1;\nst.renders.total += 1;\nconst corona = 'Final look: a high-end architectural visualization as produced with Corona Renderer in 3ds Max: physically accurate global illumination, soft bounced light in the shadows, warm sun patches with crisp contact shadows, gentle bloom and glare around bright windows, true-to-life PBR materials with fine surface detail (wood grain, fabric weave, subtle floor reflections), natural white balance, filmic contrast, crisp and noise-free. ';\nconst keep = 'Keep exactly the same camera position, angle and perspective, the same walls, doors, windows, room layout and furniture positions; do not add or remove rooms, openings or major furniture and do not change proportions. ';\nconst refNote = hasRef ? 'The second image is an approved render of another view of this same home in this style: use exactly the same furniture designs, upholstery fabrics and colours, wood tones, floor finish, curtains and decor style as in it, so both images look like one project. Do not copy its camera angle or layout. ' : '';\nconst prompt0 = traced\n  ? 'This image is a physically based path-traced render of a 3D model of a home; its lighting, sun direction and shadows are correct. Finish it into a photorealistic render. ' + keep + 'Keep the direction of the sunlight and shadows. View: ' + views[view] + '. Style: ' + styles[style] + '. Add tasteful realistic decor consistent with the style (rugs, cushions, books, plants, art) without moving the furniture. ' + corona + 'No people, no text, no labels, no watermark.'\n  : 'Turn this rough 3D model screenshot into a photorealistic architectural render. ' + keep + 'View: ' + views[view] + '. Style: ' + styles[style] + '. ' + corona + 'Soft natural daylight. Remove any labels or interface elements. No people, no text, no watermark.';\nconst prompt = refNote + prompt0;\nconst bin = { image: { data: m[2], mimeType: 'image/' + m[1], fileName: 'view.' + (m[1] === 'jpeg' ? 'jpg' : m[1]), fileExtension: m[1] === 'jpeg' ? 'jpg' : m[1] } };\nif (hasRef) bin.ref = { data: rm[2], mimeType: 'image/' + rm[1], fileName: 'ref.' + (rm[1] === 'jpeg' ? 'jpg' : rm[1]), fileExtension: rm[1] === 'jpeg' ? 'jpg' : rm[1] };\nreturn [{ json: Object.assign(base, { allowed: true, remaining: PER_VISITOR - used - 1, prompt }), binary: bin }];"
     }
   },
   output: [{ session_id: 'abc123xyz', style: 'modern', view: 'orbit', source: 'traced', model: 'gpt-image-2', quality: 'high', lang: 'ar', day: '2026-10-08', allowed: true, remaining: 2, prompt: 'This image is a physically based path-traced render...' }]
@@ -729,6 +729,54 @@ const aiRender = node({
       bodyParameters: {
         parameters: [
           { parameterType: 'formBinaryData', name: 'image', inputDataFieldName: 'image' },
+          { name: 'model', value: expr('{{ $json.model }}') },
+          { name: 'prompt', value: expr('{{ $json.prompt }}') },
+          { name: 'size', value: '1536x1024' },
+          { name: 'quality', value: expr('{{ $json.quality }}') },
+          { name: 'output_format', value: 'jpeg' },
+          { name: 'output_compression', value: '88' },
+          { name: 'n', value: '1' }
+        ]
+      },
+      options: { timeout: 240000 }
+    },
+    credentials: openai
+  },
+  output: [{ data: [{ b64_json: '/9j/' }] }]
+});
+
+const hasRef = ifElse({
+  version: 2.2,
+  config: {
+    name: 'Has style reference?',
+    parameters: {
+      conditions: {
+        options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' },
+        conditions: [{ leftValue: expr('{{ $json.has_ref }}'), operator: { type: 'boolean', operation: 'true', singleValue: true } }],
+        combinator: 'and'
+      }
+    }
+  }
+});
+
+// same call with the earlier approved render of this style as a second image, so views match
+const aiRenderRef = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.5,
+  config: {
+    name: 'Render with OpenAI (style ref)',
+    onError: 'continueErrorOutput',
+    parameters: {
+      method: 'POST',
+      url: 'https://api.openai.com/v1/images/edits',
+      authentication: 'predefinedCredentialType',
+      nodeCredentialType: 'openAiApi',
+      sendBody: true,
+      contentType: 'multipart-form-data',
+      bodyParameters: {
+        parameters: [
+          { parameterType: 'formBinaryData', name: 'image[]', inputDataFieldName: 'image' },
+          { parameterType: 'formBinaryData', name: 'image[]', inputDataFieldName: 'ref' },
           { name: 'model', value: expr('{{ $json.model }}') },
           { name: 'prompt', value: expr('{{ $json.prompt }}') },
           { name: 'size', value: '1536x1024' },
@@ -851,7 +899,7 @@ export default workflow('oxira-design', 'Oxira Design')
   .add(renderHook)
   .to(checkRender)
   .to(allowRender
-    .onTrue(aiRender.onError(replyRenderFail).to(renderOut))
+    .onTrue(hasRef.onTrue(aiRenderRef.onError(replyRenderFail).to(renderOut)).onFalse(aiRender.onError(replyRenderFail).to(renderOut)))
     .onFalse(replyRenderLimit))
   .add(renderOut)
   .to(replyRender)

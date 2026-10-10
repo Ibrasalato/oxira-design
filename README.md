@@ -140,3 +140,13 @@ The studio's render button runs a real path tracer in the visitor's browser
   which asks `gpt-image-2` (quality high, direct `/v1/images/edits` call) for a Corona-style finish on the same
   camera, layout and sun direction. It uses the same free quota as the AI render (3 per visitor, 150 per day).
 - Test hook: `?ptw=480` forces the render width.
+
+### Render upgrades (render-only scene, `src/scripts/studio/renderkit.ts`)
+- Before tracing, the cloned scene gets rounded edges on furniture, physically based materials with procedural
+  maps (wood grain, fabric weave with sheen, rug pile, plaster, floor joints as relief, clearcoat on floors and stone),
+  curtains at windows, warm ceiling panel lights and sealing slabs for interiors. The live 3D view is unchanged.
+- **4K download** (`src/scripts/studio/upscale.ts`): ESRGAN ×3 (UpscalerJS `esrgan-medium`, MIT) with TensorFlow.js in
+  the browser, fitted to 3840 px. The model is self-hosted in `public/models/esrgan-medium-x3/` (2.8 MB, loaded on demand).
+- **Style lock**: the first AI image of each style is kept for the visit (sessionStorage, 768 px) and sent as `ref`
+  with later renders. n8n `Has style reference?` routes those to `Render with OpenAI (style ref)`, which sends both
+  images (`image[]`) so furniture, fabrics and colours match across views.

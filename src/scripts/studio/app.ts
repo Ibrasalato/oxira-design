@@ -11,7 +11,7 @@ import { renderText } from '../../i18n/render';
 import type { Lang } from '../../i18n/content';
 import { detectRegion, areaIn, lenIn } from '../../lib/region';
 
-type Cfg = { lang: Lang; render: string; finishing: string; listing: string; tour: string; planner: string; samples: Record<string, string>; whatsapp: string };
+type Cfg = { lang: Lang; upscaleModel: string; render: string; finishing: string; listing: string; tour: string; planner: string; samples: Record<string, string>; whatsapp: string };
 
 export function startStudio(root: HTMLElement) {
   const cfg: Cfg = JSON.parse(root.dataset.cfg!);
@@ -277,18 +277,39 @@ export function startStudio(root: HTMLElement) {
   };
 
   /** Sends one image to the n8n render workflow; returns the image URL, 'limit', or throws. */
+  // Style lock: the first AI render of each style becomes the reference for later views, so furniture,
+  // fabrics and colours stay the same from shot to shot (kept for this visit, small JPEG).
+  const REF_KEY = 'oxira-design-style-ref';
+  const styleRefs = new Map<string, string>();
+  try { const j = JSON.parse(sessionStorage.getItem(REF_KEY) || '{}'); for (const k in j) styleRefs.set(k, j[k]); } catch {}
+  const shrink = (src: string, max = 768) => new Promise<string>((ok) => {
+    const i = new Image();
+    i.onload = () => { const k = Math.min(1, max / Math.max(i.width, i.height)); const c = document.createElement('canvas'); c.width = Math.round(i.width * k); c.height = Math.round(i.height * k); c.getContext('2d')!.drawImage(i, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', 0.8)); };
+    i.onerror = () => ok('');
+    i.src = src;
+  });
+  const rememberStyle = async (src: string) => {
+    if (styleRefs.has(style)) return;
+    const small = await shrink(src);
+    if (!small) return;
+    styleRefs.set(style, small);
+    try { sessionStorage.setItem(REF_KEY, JSON.stringify(Object.fromEntries(styleRefs))); } catch {}
+  };
+
   async function requestAi(image: string, source: 'snapshot' | 'traced'): Promise<string> {
     const room = plan!.rooms.slice().sort((a, b) => b.area - a.area)[0];
     const res = await fetch(cfg.render, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' }, // simple request, no CORS preflight
-      body: JSON.stringify({ sessionId: sid, image, style, view: viewer!.view, room: room ? room.type : 'room', lang: cfg.lang, source }),
+      body: JSON.stringify({ sessionId: sid, image, style, view: viewer!.view, room: room ? room.type : 'room', lang: cfg.lang, source, ref: styleRefs.get(style) || undefined }),
     });
     const j = await res.json();
     if (typeof j.remaining === 'number') { remaining = j.remaining; renderQuota(); }
     if (j.reason === 'limit') return 'limit';
     if (!j.success || !j.image) throw new Error(j.reason || 'failed');
-    return String(j.image).startsWith('data:') || String(j.image).startsWith('http') ? j.image : `data:image/jpeg;base64,${j.image}`;
+    const out = String(j.image).startsWith('data:') || String(j.image).startsWith('http') ? j.image : `data:image/jpeg;base64,${j.image}`;
+    rememberStyle(out);
+    return out;
   }
 
   // ------------------------------------------------------------ path-traced render
@@ -301,20 +322,23 @@ export function startStudio(root: HTMLElement) {
   const ptMsg = $('sd-pt-msg');
   const ptFill = $('sd-pt-fill');
   const ptDl = $('sd-pt-dl') as HTMLAnchorElement;
+  let ptWhich: 'trace' | 'ai' = 'trace';
   const ptShow = (which: 'trace' | 'ai') => {
     const src = which === 'ai' ? ptAi : ptImage;
     if (!src) return;
+    ptWhich = which;
     const img = new Image(); img.alt = RT.title; img.src = src;
     ptStage.replaceChildren(img);
     $('sd-pt-tabs').querySelectorAll<HTMLButtonElement>('[data-pt-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.ptTab === which)));
     ptDl.hidden = true;
     watermark(src, 'image/jpeg').then((b) => { ptDl.href = URL.createObjectURL(b); ptDl.hidden = false; }).catch(() => { ptDl.href = src; ptDl.hidden = false; });
+    $('sd-pt-4k').hidden = false;
   };
   const ptButtons = (busy: boolean) => {
     $('sd-pt-stop').hidden = !busy;
     $('sd-pt-again').hidden = busy;
     $('sd-pt-ai').hidden = busy || !ptImage;
-    if (busy) ptDl.hidden = true;
+    if (busy) { ptDl.hidden = true; $('sd-pt-4k').hidden = true; }
   };
 
   async function pathRender() {
@@ -356,6 +380,29 @@ export function startStudio(root: HTMLElement) {
       ptJob = null;
       ptButtons(false);
       ptMsg.textContent = T.render.fail;
+    }
+  }
+
+  // 4K: ESRGAN upscale in the browser (lazy), then the usual mark
+  let upBusy = false;
+  async function pt4k() {
+    const src = ptWhich === 'ai' ? ptAi : ptImage;
+    if (!src || upBusy) return;
+    upBusy = true;
+    const btn = $('sd-pt-4k') as HTMLButtonElement;
+    btn.disabled = true;
+    ptMsg.textContent = RT.upscaling(0);
+    try {
+      const { to4k } = await import('./upscale.ts');
+      const big = await to4k(src, cfg.upscaleModel, (p) => { ptMsg.textContent = RT.upscaling(p); ptFill.style.width = `${p}%`; });
+      const blob = await watermark(big, 'image/jpeg').catch(async () => (await fetch(big)).blob());
+      save(blob, base() + (ptWhich === 'ai' ? '-render-ai-4k.jpg' : '-render-4k.jpg'));
+      ptMsg.textContent = RT.up4kDone;
+    } catch (e) {
+      console.warn(e);
+      ptMsg.textContent = RT.up4kFail;
+    } finally {
+      upBusy = false; btn.disabled = false; ptFill.style.width = '100%';
     }
   }
 
@@ -544,6 +591,7 @@ export function startStudio(root: HTMLElement) {
   $('sd-pt-again').addEventListener('click', pathRender);
   $('sd-pt-stop').addEventListener('click', () => ptJob?.stop());
   $('sd-pt-ai').addEventListener('click', ptFinish);
+  $('sd-pt-4k').addEventListener('click', pt4k);
   $('sd-pt-tabs').addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-pt-tab]'); if (b) ptShow(b.dataset.ptTab as 'trace' | 'ai'); });
   ptDlg.addEventListener('close', () => { ptJob?.stop(); ptJob = null; });
 

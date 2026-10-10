@@ -19,6 +19,7 @@ const cfg = {
   listing: N8N.listing,
   tour: link(lang, '/tour/'),
   planner: link(lang, '/plan/'),
+  upscaleModel: asset('models/esrgan-medium-x3/model.json'),
   samples: { apartment: asset('samples/apartment-3br.dxf'), studio: asset('samples/studio-ar.dxf') },
   whatsapp: CONTACT.whatsapp,
 };
@@ -239,6 +240,7 @@ const cfg = {
     <button type="button" class="btn btn-ghost" id="sd-pt-again" hidden>{rt.again}</button>
     <button type="button" class="btn btn-navy" id="sd-pt-ai" hidden title={rt.aiNote}><Icon name="spark" />{rt.ai}</button>
     <a class="btn btn-amber" id="sd-pt-dl" download="oxira-design-render.jpg" hidden>{s.render.download}</a>
+    <button type="button" class="btn btn-ghost" id="sd-pt-4k" hidden>{rt.up4k}</button>
   </div>
 </dialog>
 
